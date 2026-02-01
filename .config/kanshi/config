@@ -1,0 +1,15 @@
+profile extend {
+  output DP-3 enable position 0,0
+  output DP-2 enable position 2560,0
+}
+
+profile single-left {
+  output DP-3 enable position 0,0
+  output DP-2 disable
+}
+
+profile single-right {
+  output DP-3 disable
+  output DP-2 enable position 0,0
+}
+
