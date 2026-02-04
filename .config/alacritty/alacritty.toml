@@ -1,3 +1,7 @@
+[general]
+live_config_reload = true
+import = ["~/.config/alacritty/themes/shakimofu-dark.toml"]
+
 [window]
 opacity = 0.85
 
@@ -5,17 +9,17 @@ opacity = 0.85
 size = 12
 
 [font.bold]
-family = "Noto Sans Mono CJK JP"
+family = "UDEV Gothic NF"
 style = "Bold"
 
 [font.bold_italic]
-family = "Noto Sans Mono CJK JP"
+family = "UDEV Gothic NF"
 style = "Bold Italic"
 
 [font.italic]
-family = "Noto Sans Mono CJK JP"
+family = "UDEV Gothic NF"
 style = "Italic"
 
 [font.normal]
-family = "Noto Sans Mono CJK JP"
+family = "UDEV Gothic NF"
 style = "Regular"
