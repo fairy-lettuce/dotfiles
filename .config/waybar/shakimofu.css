@@ -1,0 +1,27 @@
+/* shakimofu dark by fairy-lettuce */
+@define-color foreground #ecd6b8;
+@define-color foreground-light #f1e6d7;
+@define-color background #201811;
+@define-color black #2d2e2f;
+@define-color red #fb8969;
+@define-color green #b6d673;
+@define-color yellow #f8c681;
+@define-color blue #86b6e0;
+@define-color magenta #b59dd9;
+@define-color cyan #94d9c5;
+@define-color white #efefef;
+@define-color orange #f3ab7f;
+
+/* shakimofu light by fairy-lettuce */
+@define-color foreground #201811;
+@define-color foreground-light #2f261e;
+@define-color background #f6e6d0;
+@define-color black #2d2e2f;
+@define-color red #ef7959;
+@define-color green #9dc150;
+@define-color yellow #ecbe7f;
+@define-color blue #7dadd7;
+@define-color magenta #ac93d2;
+@define-color cyan #8dd1bd;
+@define-color white #efefef;
+@define-color orange #e89f71;
