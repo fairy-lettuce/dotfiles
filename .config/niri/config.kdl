@@ -599,6 +599,9 @@ binds {
 	
 	// Rotate wallpaper
 	Mod+Shift+W { spawn "sh" "-c" "~/.local/bin/wallpaper-random.sh"; }
+
+	// Pick clipboard history
+	Mod+P hotkey-overlay-title="Clipboard History" { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
 }
 
 // Wallpaper
@@ -607,3 +610,6 @@ spawn-at-startup "swww-daemon"
 
 // For changing monitor mode
 spawn-at-startup "/usr/bin/kanshi"
+
+// Clipboard
+spawn-sh-at-startup "wl-paste --watch cliphist store & wl-paste --type image --watch cliphist store"
