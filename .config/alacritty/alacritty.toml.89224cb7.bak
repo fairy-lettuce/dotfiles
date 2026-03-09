@@ -1,6 +1,6 @@
 [general]
 live_config_reload = true
-import = ["~/.config/alacritty/themes/colors.toml"]
+import = ["~/.config/alacritty/themes/shakimofu-dark.toml"]
 
 [window]
 opacity = 0.85
@@ -25,8 +25,3 @@ style = "Italic"
 [font.normal]
 family = "UDEV Gothic NF"
 style = "Regular"
-
-[[keyboard.bindings]]
-key = "Return"
-mods = "Shift"
-chars = "\u001B\r"

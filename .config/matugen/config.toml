@@ -1,0 +1,36 @@
+[config]
+version_check = false
+
+expr_prefix = "{{"
+expr_postfix = "}}"
+
+block_prefix = "<*"
+block_postfix = "*>"
+
+import_json_files = ["./extra_config.json", "./themes/shakimofu.json"]
+
+[templates.waybar-colors]
+input_path = "~/.config/matugen/templates/waybar-colors.css"
+output_path = "~/.config/waybar/colors.css"
+post_hook = "killall -SIGUSR2 waybar"
+
+[templates.alacritty-colors]
+input_path = "~/.config/matugen/templates/alacritty-colors.toml"
+output_path = "~/.config/alacritty/themes/colors.toml"
+
+[templates.mako]
+input_path = "~/.config/matugen/templates/mako-config"
+output_path = "~/.config/mako/config"
+post_hook = "makoctl reload"
+
+[templates.fuzzel]
+input_path = "~/.config/matugen/templates/fuzzel-colors.ini"
+output_path = "~/.config/fuzzel/colors.ini"
+
+[templates.swaylock]
+input_path = "~/.config/matugen/templates/swaylock-config"
+output_path = "~/.config/swaylock/config"
+
+[templates.wlogout]
+input_path = "~/.config/matugen/templates/wlogout-colors.css"
+output_path = "~/.config/wlogout/style.css"

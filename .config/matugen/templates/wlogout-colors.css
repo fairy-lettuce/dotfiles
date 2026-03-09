@@ -5,15 +5,15 @@
 }
 
 window {
-	background-color: rgba(32, 24, 17, 0.9);
+	background-color: rgba({{ theme.background.default.red }}, {{ theme.background.default.green }}, {{ theme.background.default.blue }}, 0.9);
 }
 
 button {
     border-radius: 0;
-    border-color: #f8c681;
-	text-decoration-color: #f1e6d7;
-    color: #ecd6b8;
-	background-color: #201811;
+    border-color: {{ theme.yellow.default.hex }};
+	text-decoration-color: {{ theme.foreground_light.default.hex }};
+    color: {{ theme.foreground.default.hex }};
+	background-color: {{ theme.background.default.hex }};
 	border-style: solid;
 	border-width: 2px;
 	background-repeat: no-repeat;
@@ -22,7 +22,7 @@ button {
 }
 
 button:focus, button:active, button:hover {
-	background-color: #b6d673;
+	background-color: {{ theme.green.default.hex }};
 	outline-style: none;
 }
 
