@@ -2,25 +2,25 @@
 # author: fairy_lettuce
 
 [colors.primary]
-foreground = "#eae3cf"
-background = "#17130c"
+foreground = "#ecd6b8"
+background = "#201811"
 
 [colors.normal]
-black = "#1d1f21"
+black = "#2d2e2f"
 red = "#fb8969"
-green = "#bede77"
-yellow = "#edb567"
-blue = "#79abd6"
-magenta = "#b496e1"
+green = "#b6d673"
+yellow = "#f8c681"
+blue = "#86b6e0"
+magenta = "#b59dd9"
 cyan = "#94d9c5"
-white = "#dcdcd9"
+white = "#efefef"
 
 [colors.bright]
 black = "#666666"
-red = "#d54e53"
-green = "#b9ca4a"
-yellow = "#e7c547"
-blue = "#7aa6da"
-magenta = "#c397d8"
-cyan = "#70c0b1"
-white = "#eaeaea"
+red = "#f3967c"
+green = "#c7de95"
+yellow = "#f8d099"
+blue = "#9bc3e5"
+magenta = "#cba9d4"
+cyan = "#a5dece"
+white = "#e8e8e8"
