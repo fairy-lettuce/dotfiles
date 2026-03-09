@@ -4,7 +4,7 @@
 
 [background]
 # Path to the background image
-path = "~/Pictures/Rabi-Ribi/Bonus Wallpaper/Irisu.png"
+path = "/home/mei/Pictures/Wallpaper/ruan-mei-background.png"
 
 # How the background image covers the screen if the aspect ratio doesn't match
 # Available values: "Fill", "Contain", "Cover", "ScaleDown"
