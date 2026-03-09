@@ -63,7 +63,7 @@
 @define-color white #ebdbb2;
 @define-color orange #d65d0e;
 
-
+@import "shakimofu.css";
 
 /* Module-specific colors */
 @define-color workspaces-color @foreground;
