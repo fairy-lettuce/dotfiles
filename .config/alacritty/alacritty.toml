@@ -3,7 +3,7 @@ live_config_reload = true
 import = ["~/.config/alacritty/themes/shakimofu-dark.toml"]
 
 [window]
-opacity = 0.85
+opacity = 0.95
 
 [font]
 size = 12
