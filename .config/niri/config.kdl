@@ -124,7 +124,7 @@ layout {
         // off
 
         // How many logical pixels the ring extends out from the windows.
-        width 3
+        width 4
 
         // Colors can be set in a variety of ways:
         // - CSS named colors: "red"
@@ -240,7 +240,7 @@ spawn-at-startup "waybar"
 
 hotkey-overlay {
     // Uncomment this line to disable the "Important Hotkeys" pop-up at startup.
-    // skip-at-startup
+    skip-at-startup
 }
 
 // Uncomment this line to ask the clients to omit their client-side decorations if possible.
@@ -596,10 +596,14 @@ binds {
 	Mod+Shift+1 { spawn "kanshictl" "switch" "extend"; }
 	Mod+Shift+2 { spawn "kanshictl" "switch" "single-left"; }
 	Mod+Shift+3 { spawn "kanshictl" "switch" "single-right"; }
+	
+	// Rotate wallpaper
+	Mod+Shift+W { spawn "sh" "-c" "~/.local/bin/wallpaper-random.sh"; }
 }
 
 // Wallpaper
-spawn-at-startup "swaybg" "-m" "fill" "-i" "/home/mei/Pictures/Rabi-Ribi/Bonus Wallpaper/Erina.png"
+// spawn-sh-at-startup "swaybg -m fill -i /home/mei/Pictures/Wallpaper/ruan-mei.png"
+spawn-at-startup "swww-daemon"
 
 // For changing monitor mode
 spawn-at-startup "/usr/bin/kanshi"
