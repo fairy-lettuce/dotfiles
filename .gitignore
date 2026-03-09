@@ -1,0 +1,18 @@
+# gitignore for dotfiles
+# do not track noisy directories
+
+.config/BraveSoftware
+.config/Code
+.config/Code - OSS
+.config/discord
+.config/Electron
+.config/go
+.config/ibus
+.config/matplotlib
+.config/mozc
+.config/obs-studio
+.config/obsidian
+.config/pulse
+.config/sunshine
+.config/unity3d
+.config/VSCodium
