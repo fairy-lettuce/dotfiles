@@ -1,0 +1,193 @@
+#!/bin/bash
+# etcfiles - sync config files between ~/.local/share/etcfiles and /etc
+#
+# Future idea: track which dotfiles commit was last deployed to /etc as
+# metadata (e.g. a stamp file). This could help detect three-way changes
+# (both /etc and etcfiles modified since last deploy) and improve diff
+# warnings. Not needed while the file count is small.
+#
+# Note: file permissions and ownership are not preserved during copy.
+# deploy uses sudo cp (file ends up root-owned with source permissions),
+# fetch copies as the current user. For the typical 644/root:root configs
+# this is fine, but may need attention for restrictive files (e.g. 0600).
+set -euo pipefail
+
+ETCFILES_DIR="$HOME/.local/share/etcfiles"
+DRY_RUN=false
+
+usage() {
+    cat <<'EOF'
+etcfiles - sync config files between ~/.local/share/etcfiles and /etc
+
+Tracks a curated set of /etc config files (greetd, GRUB, modprobe, etc.)
+alongside your dotfiles. Files in ~/.local/share/etcfiles mirror the
+directory structure of /etc and can be deployed or fetched interactively.
+
+Usage: etcfiles [-n] <command>
+
+Commands:
+  deploy    Copy etcfiles → /etc (with diff preview and confirmation)
+  fetch     Copy /etc → etcfiles (pull in changes made directly in /etc)
+
+Options:
+  -n        Dry run (show diffs without making changes)
+  -h        Show this help
+EOF
+    exit "${1:-0}"
+}
+
+# Show diff, paging through less if output is long and stdout is a terminal
+# Usage: show_diff [--sudo] file1 file2
+show_diff() {
+    local use_sudo=false
+    if [[ "${1:-}" == "--sudo" ]]; then
+        use_sudo=true
+        shift
+    fi
+    local diff_output
+    if [[ "$use_sudo" == true ]]; then
+        diff_output=$(sudo diff --color=always -u "$@" 2>&1 || true)
+    else
+        diff_output=$(diff --color=always -u "$@" || true)
+    fi
+    if [[ -t 1 ]] && [[ $(echo "$diff_output" | wc -l) -gt 30 ]]; then
+        echo "$diff_output" | less -RFX
+    else
+        echo "$diff_output"
+    fi
+}
+
+# Collect all tracked files (relative paths under etcfiles dir)
+collect_files() {
+    find "$ETCFILES_DIR" -type f -not -name '*.bak.*' -printf '%P\n' | sort
+}
+
+deploy() {
+    local files
+    files=$(collect_files)
+    if [[ -z "$files" ]]; then
+        echo "No tracked files found in $ETCFILES_DIR"
+        return
+    fi
+
+    local changed=0
+    local skipped=0
+    local missing=0
+
+    while IFS= read -r relpath; do
+        local src="$ETCFILES_DIR/$relpath"
+        local dst="/etc/$relpath"
+
+        if [[ ! -e "$dst" ]]; then
+            echo "[NEW] /etc/$relpath"
+            show_diff /dev/null "$src"
+            missing=$((missing + 1))
+            if [[ "$DRY_RUN" == false ]]; then
+                read -rp "  Create this file? [y/N] " answer < /dev/tty
+                if [[ "$answer" =~ ^[Yy]$ ]]; then
+                    sudo mkdir -p "$(dirname "$dst")"
+                    sudo cp "$src" "$dst"
+                    echo "  → created"
+                else
+                    echo "  → skipped"
+                fi
+            fi
+            continue
+        fi
+
+        # No sudo here: currently all tracked files are user-readable.
+        # If root-only files are added later, this needs sudo diff.
+        if diff -q "$src" "$dst" > /dev/null 2>&1; then
+            skipped=$((skipped + 1))
+            continue
+        fi
+
+        echo "[CHANGED] /etc/$relpath"
+        show_diff "$dst" "$src"
+        changed=$((changed + 1))
+
+        if [[ "$DRY_RUN" == false ]]; then
+            read -rp "  Apply this change? [y/N] " answer < /dev/tty
+            if [[ "$answer" =~ ^[Yy]$ ]]; then
+                local ts
+                ts=$(date +%Y%m%d%H%M%S)
+                sudo cp "$dst" "$dst.bak.$ts"
+                sudo cp "$src" "$dst"
+                echo "  → deployed (backup: $dst.bak.$ts)"
+            else
+                echo "  → skipped"
+            fi
+        fi
+    done <<< "$files"
+
+    echo ""
+    echo "Summary: $changed changed, $missing new, $skipped unchanged"
+}
+
+fetch() {
+    local files
+    files=$(collect_files)
+    if [[ -z "$files" ]]; then
+        echo "No tracked files found in $ETCFILES_DIR"
+        return
+    fi
+
+    local changed=0
+    local skipped=0
+    local missing=0
+
+    while IFS= read -r relpath; do
+        local src="/etc/$relpath"
+        local dst="$ETCFILES_DIR/$relpath"
+
+        if [[ ! -e "$src" ]]; then
+            echo "[WARN] /etc/$relpath does not exist"
+            missing=$((missing + 1))
+            continue
+        fi
+
+        if sudo diff -q "$src" "$dst" > /dev/null 2>&1; then
+            skipped=$((skipped + 1))
+            continue
+        fi
+
+        echo "[CHANGED] /etc/$relpath"
+        show_diff --sudo "$dst" "$src"
+        changed=$((changed + 1))
+
+        if [[ "$DRY_RUN" == false ]]; then
+            read -rp "  Fetch this change? [y/N] " answer < /dev/tty
+            if [[ "$answer" =~ ^[Yy]$ ]]; then
+                mkdir -p "$(dirname "$dst")"
+                sudo cat "$src" | tee "$dst" > /dev/null
+                echo "  → fetched"
+            else
+                echo "  → skipped"
+            fi
+        fi
+    done <<< "$files"
+
+    echo ""
+    echo "Summary: $changed changed, $missing missing in /etc, $skipped unchanged"
+}
+
+[[ -d "$ETCFILES_DIR" ]] || { echo "Error: $ETCFILES_DIR not found"; exit 1; }
+
+# Parse options
+while getopts "nh" opt; do
+    case "$opt" in
+        n) DRY_RUN=true ;;
+        h) usage ;;
+        *) usage 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+[[ $# -lt 1 ]] && usage 1
+
+subcmd="$1"
+case "$subcmd" in
+    deploy) deploy ;;
+    fetch)  fetch ;;
+    *)      echo "Error: unknown command '$1'" >&2; usage 1 ;;
+esac
