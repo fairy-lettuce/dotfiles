@@ -292,6 +292,12 @@ window-rule {
     open-floating true
 }
 
+// polkit agent floating
+window-rule {
+    match app-id="lxqt-policykit-agent"
+    open-floating true
+}
+
 // Example: block out two password managers from screen capture.
 // (This example rule is commented out with a "/-" in front.)
 /-window-rule {
@@ -615,3 +621,6 @@ spawn-at-startup "/usr/bin/kanshi"
 
 // Clipboard
 spawn-sh-at-startup "wl-paste --watch cliphist store & wl-paste --type image --watch cliphist store"
+
+// polkit
+spawn-at-startup "lxqt-policykit-agent"
