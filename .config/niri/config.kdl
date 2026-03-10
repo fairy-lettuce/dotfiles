@@ -608,7 +608,7 @@ binds {
 
 // Wallpaper
 // spawn-sh-at-startup "swaybg -m fill -i /home/mei/Pictures/Wallpaper/ruan-mei.png"
-spawn-at-startup "swww-daemon"
+spawn-at-startup "awww-daemon"
 
 // For changing monitor mode
 spawn-at-startup "/usr/bin/kanshi"
