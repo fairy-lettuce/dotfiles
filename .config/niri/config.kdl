@@ -624,3 +624,7 @@ spawn-sh-at-startup "wl-paste --watch cliphist store & wl-paste --type image --w
 
 // polkit
 spawn-at-startup "lxqt-policykit-agent"
+
+// Monitor gamma
+spawn-at-startup "wl-gammarelay-rs"
+spawn-sh-at-startup "sleep 2 && busctl --user set-property rs.wl-gammarelay /outputs/DP_3 rs.wl.gammarelay Gamma d 0.85"
