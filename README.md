@@ -37,6 +37,6 @@ This customization includes my original **shakimofu** color scheme — tidy and 
 
 [matugen](https://github.com/InioX/matugen) is used for changing color themes (it doesn't use its auto-generating color schemes feature tho).
 
-![Changing color theme demo](.dotfiles-assets/dotfiles-demo.mp4)
+<video src=".dotfiles-assets/demo.mp4" controls></video>
 
 shakimofu kawaii <3
