@@ -75,8 +75,15 @@ output "DP-2" {
 }
 
 layout {
-    // Set gaps around windows in logical pixels.
-    gaps 12
+    gaps 10
+
+    // Compensate for extra space from floating-style waybar
+    struts {
+        left 0
+        right 0
+        top -2
+        bottom 0
+    }
 
     // When to center a column when changing focus, options are:
     // - "never", default behavior, focusing an off-screen column will keep at the left
@@ -211,19 +218,7 @@ layout {
         offset x=0 y=5
 
         // You can also change the shadow color and opacity.
-        color "#0007"
-    }
-
-    // Struts shrink the area occupied by windows, similarly to layer-shell panels.
-    // You can think of them as a kind of outer gaps. They are set in logical pixels.
-    // Left and right struts will cause the next window to the side to always be visible.
-    // Top and bottom struts will simply add outer gaps in addition to the area occupied by
-    // layer-shell panels and regular gaps.
-    struts {
-        // left 64
-        // right 64
-        // top 64
-        // bottom 64
+        color "rgba(45, 22, 6, 0.5)"
     }
 }
 
@@ -312,7 +307,7 @@ window-rule {
 
 // rounded corners
 window-rule {
-    geometry-corner-radius 5
+    geometry-corner-radius 8
     clip-to-geometry true
 }
 
