@@ -47,8 +47,8 @@ window#waybar {
     margin: 2px 2px;
     background-color: @primary;
     color: shade(@primary, 0.5);
-    /* border: 2px solid transparent; */
     border-radius: 6px;
+	transition: background-color 1.5s ease, color 1.5s ease;
 }
 
 #clock {
@@ -58,6 +58,7 @@ window#waybar {
 #window {
 	padding: 0 10px;
     color: shade(@primary, 0.5);
+	transition: color 1.5s ease;
 }
 
 /* make window module transparent when no windows present */
@@ -77,7 +78,7 @@ label {
 }
 
 #workspaces button {
-    transition: none;
+	transition: background-color 1.5s ease, color 1.5s ease;
 	margin: 2px 1px;
 }
 
@@ -106,6 +107,7 @@ label {
 	background-position: 420px 320px;
     background-blend-mode: hard-light;
     border-radius: 6px;
+	transition: background-color 1.5s ease;
 }
 
 .cffi-niri-windows .tile:hover {
