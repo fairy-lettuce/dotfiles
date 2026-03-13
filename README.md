@@ -1,7 +1,7 @@
 # fairy-lettuce's dotfiles
 
-![Desktop screenshot](.dotfiles-assets/dotfiles-ruan-mei.webp)
-![Desktop screenshot](.dotfiles-assets/dotfiles-the-herta.webp)
+![Desktop screenshot](https://github.com/user-attachments/assets/622f85ab-2725-433b-a26f-6c0e2f89e68b)
+![Desktop screenshot](https://github.com/user-attachments/assets/0a5c7a5e-53b3-4766-a113-36e7ece34180)
 
 ## About
 
@@ -37,6 +37,6 @@ This customization includes my original **shakimofu** color scheme — crisp and
 
 [matugen](https://github.com/InioX/matugen) is used for changing color themes (it doesn't use its auto-generating color schemes feature tho).
 
-<video src=".dotfiles-assets/demo.mp4" controls></video>
+https://github.com/user-attachments/assets/957b88b6-c92a-4d72-a3f1-fe47c8b5444d
 
 shakimofu kawaii <3
