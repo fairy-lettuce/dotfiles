@@ -1,5 +1,7 @@
 [Unit]
 Description=Rotate wallpaper every 10 minutes
+After=awww-daemon.service
+Requires=awww-daemon.service
 
 [Timer]
 OnActiveSec=0

@@ -4,12 +4,11 @@ WALLPAPER_DIR="$HOME/.local/share/wallpapers/16x9"
 COLORS_TOML="$HOME/.local/share/wallpapers/colors.toml"
 DYNAMIC_JSON="$HOME/.config/matugen/themes/dynamic.json"
 
-# Restart daemon if not running
-# Temporary fix for awww-daemon crashing after rebooting from systemctl suspend
-if ! pgrep -x awww-daemon > /dev/null; then
-    awww-daemon &
-    sleep 1
-fi
+# Temporary fix for awww-daemon crasing is no longer needed because it is now executed as a systemd user unit.
+# if ! pgrep -x awww-daemon > /dev/null; then
+#     awww-daemon &
+#     sleep 1
+# fi
 
 CURRENT=$(awww query | grep -oP 'image: \K.*' | head -1)
 IMAGE=$(find "$WALLPAPER_DIR" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) | grep -vF "$CURRENT" | shuf -n 1)
