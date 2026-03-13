@@ -7,12 +7,16 @@ expr_postfix = "}}"
 block_prefix = "<*"
 block_postfix = "*>"
 
-import_json_files = ["./extra_config.json", "./themes/shakimofu.json"]
+import_json_files = [
+	"./extra_config.json",
+	"./themes/shakimofu.json",
+	"./themes/dynamic.json",
+]
 
 [templates.waybar-colors]
 input_path = "~/.config/matugen/templates/waybar-colors.css"
 output_path = "~/.config/waybar/colors.css"
-post_hook = "killall -SIGUSR2 waybar"
+# post_hook = "killall -SIGUSR2 waybar"
 
 [templates.alacritty-colors]
 input_path = "~/.config/matugen/templates/alacritty-colors.toml"

@@ -13,6 +13,8 @@
 @define-color cyan {{ theme.cyan.light.hex }};
 @define-color white {{ theme.white.light.hex }};
 @define-color orange {{ theme.orange.light.hex }};
+@define-color primary {{ theme.dynamic_primary.light.hex }};
+@define-color secondary {{ theme.dynamic_secondary.light.hex }};
 <* else *>
 @define-color foreground {{ theme.foreground.dark.hex }};
 @define-color foreground-light {{ theme.foreground_light.dark.hex }};
@@ -26,6 +28,8 @@
 @define-color cyan {{ theme.cyan.dark.hex }};
 @define-color white {{ theme.white.dark.hex }};
 @define-color orange {{ theme.orange.dark.hex }};
+@define-color primary {{ theme.dynamic_primary.dark.hex }};
+@define-color secondary {{ theme.dynamic_secondary.dark.hex }};
 <* endif *>
 <* else *>
 <* if {{ flip_mode.waybar }} *>
@@ -41,6 +45,8 @@
 @define-color cyan {{ theme.cyan.dark.hex }};
 @define-color white {{ theme.white.dark.hex }};
 @define-color orange {{ theme.orange.dark.hex }};
+@define-color primary {{ theme.dynamic_primary.dark.hex }};
+@define-color secondary {{ theme.dynamic_secondary.dark.hex }};
 <* else *>
 @define-color foreground {{ theme.foreground.light.hex }};
 @define-color foreground-light {{ theme.foreground_light.light.hex }};
@@ -54,5 +60,7 @@
 @define-color cyan {{ theme.cyan.light.hex }};
 @define-color white {{ theme.white.light.hex }};
 @define-color orange {{ theme.orange.light.hex }};
+@define-color primary {{ theme.dynamic_primary.light.hex }};
+@define-color secondary {{ theme.dynamic_secondary.light.hex }};
 <* endif *>
 <* endif *>

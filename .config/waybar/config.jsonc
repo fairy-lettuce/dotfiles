@@ -5,6 +5,7 @@
     "height": 36,
     // "width": 1280,
     "spacing": 4,
+	"reload_style_on_change": true,
     "modules-left": [
         "group/left-workspaces",
 		"group/left-windows"

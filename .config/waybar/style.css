@@ -45,15 +45,15 @@ window#waybar {
     background-blend-mode: hard-light;
     padding: 0 4px;
     margin: 2px 2px;
-    background-color: @yellow;
-    color: shade(@yellow, 0.5);
+    background-color: @primary;
+    color: shade(@primary, 0.5);
     /* border: 2px solid transparent; */
     border-radius: 6px;
 }
 
 #window {
 	padding: 0 10px;
-    color: shade(@yellow, 0.5);
+    color: shade(@primary, 0.5);
 }
 
 /* make window module transparent when no windows present */
@@ -78,12 +78,13 @@ label {
 }
 
 #workspaces button.active {
-	background-color: @orange;
+	background-color: shade(@secondary, 0.95);
+	color: shade(@primary, 0.3);
 }
 
 #workspaces button:hover {
 	/* background-image is necessary because GTK3 forces animation with background-image */
-	background-color: @cyan;
+	background-color: shade(@secondary, 1.2);
 	background-image: url("/home/mei/.local/share/waybar/paper-pattern-4.webp");
 	background-repeat: repeat;
 	background-position: 152px 290px;
@@ -95,7 +96,7 @@ label {
 }
 
 .cffi-niri-windows .tile {
-    background-color: @yellow;
+    background-color: @primary;
 	background-image: url("/home/mei/.local/share/waybar/paper-pattern-4.webp");
 	background-repeat: repeat;
 	background-position: 420px 320px;
@@ -104,11 +105,11 @@ label {
 }
 
 .cffi-niri-windows .tile:hover {
-    background-color: @green;
+    background-color: shade(@secondary, 1.2);
 }
 
 .cffi-niri-windows .tile:active {
-    background-color: @orange;
+    background-color: shade(@secondary, 0.95);
 }
 
 .cffi-niri-windows .tile.urgent {
