@@ -15,13 +15,13 @@ Currently super WIP!
 - Terminal: [alacritty](https://github.com/alacritty/alacritty)
 - File manager: [Thunar](https://gitlab.xfce.org/xfce/thunar)
 - Bar: [waybar](https://github.com/Alexays/Waybar)
-- File selector: [fuzzel](https://codeberg.org/dnkl/fuzzel)
+- App launcher: [fuzzel](https://codeberg.org/dnkl/fuzzel)
 - Greeter: [greetd](https://sr.ht/~kennylevinsen/greetd/) and [ReGreet](https://github.com/rharish101/ReGreet)
 - Boot loader: [GRUB](https://gitlab.com/gnu-grub/grub)
 - Power button: [wlogout](https://github.com/ArtsyMacaw/wlogout)
 - Notification: [mako](https://github.com/emersion/mako)
 - Lock screen: [swaylock](https://github.com/swaywm/swaylock)
-- Screen switcher: [kanshi](https://sr.ht/~emersion/kanshi/) (for dual monitor environment)
+- Display switcher: [kanshi](https://sr.ht/~emersion/kanshi/) (for dual monitor environment)
 
 - and a lot more?
 
@@ -31,7 +31,7 @@ I myself drew the wallpapers just for this desktop experience! Visit https://git
 
 ## Color theme
 
-This customization includes my original **shakimofu** color scheme — tidy and fluffy pastel color scheme!
+This customization includes my original **shakimofu** color scheme — crisp and fluffy pastel color scheme!
 
 **More fun with the wallpapers!** When switching wallpapers, Waybar's primary color automatically changes to that of the new wallpaper.
 
