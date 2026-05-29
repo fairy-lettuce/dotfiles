@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Updating foreign pkglist after installs and removes...
+When = PostTransaction
+Exec = /bin/bash -c 'pacman -Qqem > /home/$SUDO_USER/.pacman/pkglist_foreign_$HOSTNAME.txt'

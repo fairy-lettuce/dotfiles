@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Updating pkglist after installs and removes...
+When = PostTransaction
+Exec = /bin/bash -c 'pacman -Qqen > /home/$SUDO_USER/.pacman/pkglist_$HOSTNAME.txt'
