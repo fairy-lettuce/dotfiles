@@ -1,0 +1,10 @@
+[terminal]
+# The VT to run the greeter on. Can be "next", "current" or a number
+# designating the VT.
+# vt = 1
+vt = "next"
+
+# The default session, also known as the greeter.
+[default_session]
+command = "env GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
+user = "greeter"
