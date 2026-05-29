@@ -173,21 +173,22 @@ fetch() {
 
 [[ -d "$ETCFILES_DIR" ]] || { echo "Error: $ETCFILES_DIR not found"; exit 1; }
 
-# Parse options
-while getopts "nh" opt; do
-    case "$opt" in
-        n) DRY_RUN=true ;;
-        h) usage ;;
-        *) usage 1 ;;
+# Parse options and subcommand (flags accepted before or after subcommand)
+subcmd=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -n) DRY_RUN=true ;;
+        -h) usage ;;
+        deploy|fetch) subcmd="$1" ;;
+        -*) echo "Error: unknown option '$1'" >&2; usage 1 ;;
+        *)  echo "Error: unknown command '$1'" >&2; usage 1 ;;
     esac
+    shift
 done
-shift $((OPTIND - 1))
 
-[[ $# -lt 1 ]] && usage 1
+[[ -z "$subcmd" ]] && usage 1
 
-subcmd="$1"
 case "$subcmd" in
     deploy) deploy ;;
     fetch)  fetch ;;
-    *)      echo "Error: unknown command '$1'" >&2; usage 1 ;;
 esac
