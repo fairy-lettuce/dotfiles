@@ -20,8 +20,13 @@ bindkey -M vicmd "${terminfo[kdch1]}" delete-char
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 # start lgx2userspace (capture board)
-
 alias lgx2='/usr/bin/lgx2userspace -d /dev/video99'
 
 # path
 export PATH=$HOME/.local/bin:$PATH
+
+PROMPT='%{%F{blue}%}%n%{%f%}%{%F{foreground}%}@%{%f%}%{%F{cyan}%}%m %{%f%}%{%F{green}%}%~ %{%f%}%{%F{foreground}%}%#%{%f%} '
+
+# powerline
+powerline-daemon -q
+. /usr/share/powerline/bindings/zsh/powerline.zsh

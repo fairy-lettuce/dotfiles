@@ -121,6 +121,7 @@ vlc
 vlc-plugin-ffmpeg
 vulkan-tools
 waybar
+wayvnc
 wine
 wine-mono
 winetricks

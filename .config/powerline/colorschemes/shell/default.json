@@ -1,0 +1,33 @@
+{
+  "name": "shakimofu",
+  "groups": {
+    "user": {
+      "fg": "shakimofu:background",
+      "bg": "shakimofu:cyan",
+      "attrs": []
+    },
+    "superuser": {
+      "fg": "shakimofu:background",
+      "bg": "shakimofu:red",
+      "attrs": ["bold"]
+    },
+
+    "hostname": {
+      "fg": "shakimofu:background",
+      "bg": "shakimofu:blue",
+      "attrs": []
+    },
+
+    "cwd": {
+      "fg": "shakimofu:background",
+      "bg": "shakimofu:green",
+      "attrs": []
+    },
+    "cwd:current_folder": "cwd",
+    "cwd:divider": {
+      "fg": "shakimofu:foreground",
+      "bg": "shakimofu:foreground",
+      "attrs": []
+    }
+  }
+}
