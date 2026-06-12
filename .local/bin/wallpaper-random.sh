@@ -11,8 +11,16 @@ DYNAMIC_JSON="$HOME/.config/matugen/themes/dynamic.json"
 # fi
 
 CURRENT=$(awww query | grep -oP 'image: \K.*' | head -1)
-IMAGE=$(find "$WALLPAPER_DIR" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) | grep -vF "$CURRENT" | shuf -n 1)
-[ -n "$IMAGE" ] && awww img "$IMAGE" --transition-fps 165 -t wipe --transition-angle 15
+CANDIDATES=$(find "$WALLPAPER_DIR" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \))
+[ -n "$CURRENT" ] && CANDIDATES=$(echo "$CANDIDATES" | grep -vF "$CURRENT")
+IMAGE=$(echo "$CANDIDATES" | shuf -n 1)
+if [ -n "$IMAGE" ]; then
+    if [ -n "$CURRENT" ]; then
+        awww img "$IMAGE" --transition-fps 165 -t wipe --transition-angle 15
+    else
+        awww img "$IMAGE" -t none
+    fi
+fi
 
 # Update dynamic colors based on wallpaper
 BASENAME=$(basename "$IMAGE" | sed 's/\.[^.]*$//')

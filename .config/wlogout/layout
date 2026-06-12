@@ -34,3 +34,9 @@
     "text" : "Reboot",
     "keybind" : "r"
 }
+{
+    "label" : "windows",
+    "action" : "/home/mei/.local/bin/reboot-windows.sh",
+    "text" : "Reboot to Windows",
+    "keybind" : "w"
+}

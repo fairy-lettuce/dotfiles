@@ -1,5 +1,7 @@
 [Unit]
 Description=Rotate wallpaper
+After=awww-daemon.service
+Requires=awww-daemon.service
 
 [Service]
 Type=oneshot

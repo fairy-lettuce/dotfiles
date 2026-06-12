@@ -5,20 +5,20 @@
     "height": 36,
     // "width": 1280,
     "spacing": 4,
-	"reload_style_on_change": true,
+    "reload_style_on_change": true,
     "modules-left": [
         "group/left-workspaces",
-		"group/left-windows"
+        "group/left-windows"
     ],
     "modules-center": [
         "group/center"
     ],
     "modules-right": [
-		"group/right-inhibitor",
+        "group/right-inhibitor",
         "group/right-device",
-		"group/right-tray",
-		"group/right-clock",
-		"group/right-power"
+        "group/right-tray",
+        "group/right-clock",
+        "group/right-power"
     ],
 
     "group/left-workspaces": {
@@ -76,8 +76,8 @@
         ]
     },
     
-	"cffi/niri-windows": {
-		"module_path": "/usr/lib/waybar-niri-windows.so",
+    "cffi/niri-windows": {
+        "module_path": "/usr/lib/waybar-niri-windows.so",
         "options": {
             "mode": "graphical",
             "show-floating": "auto",
@@ -94,13 +94,19 @@
             "on-scroll-up": "FocusColumnLeft",
             "on-scroll-down": "FocusColumnRight"
         }
-	},
+    },
     "idle_inhibitor": {
         "format": "{icon}",
         "format-icons": {
             "activated": "",
             "deactivated": ""
         }
+    },
+    "systemd-failed-units": {
+        "hide-on-ok": true,
+        "format": "✗ {nr_failed}",
+        "system": true,
+        "user": true
     },
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
@@ -147,10 +153,10 @@
     },
     "clock": {
         // "timezone": "America/New_York",
-		"interval": 1,
+        "interval": 1,
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "format": "{:%H:%M:%S}",
-		"format-alt": "{:%Y-%m-%d (%a)}"
+        "format-alt": "{:%Y-%m-%d (%a)}"
     },
     "custom/media": {
         "format": "{icon} {text}",
@@ -167,7 +173,7 @@
     "custom/power": {
         "format": "⏻",
         "tooltip": true,
-		"tooltip-format": "wlogout",
-		"on-click": "wlogout"
+        "tooltip-format": "wlogout",
+        "on-click": "wlogout"
     }
 }
