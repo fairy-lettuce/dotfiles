@@ -1,3 +1,4 @@
+antigravity-cli
 awww-bin
 brave-bin
 brother-dcpj987n-cups-bin

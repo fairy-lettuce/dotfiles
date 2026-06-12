@@ -23,6 +23,7 @@ distrobox
 dotnet-runtime
 dotnet-sdk
 efibootmgr
+evtest
 fastfetch
 fcitx5
 fcitx5-configtool
@@ -48,10 +49,13 @@ gnome-keyring
 greetd
 greetd-regreet
 grub
+gst-plugins-base
+gst-plugins-good
 gvfs
 hugo
 intel-ucode
 kanshi
+krita
 less
 lib32-gamemode
 lib32-nvidia-utils
@@ -103,6 +107,7 @@ powerline
 powerline-fonts
 qt5-wayland
 rclone
+remmina
 rustup
 sl
 slirp4netns
@@ -126,6 +131,7 @@ wine
 wine-mono
 winetricks
 wl-clipboard
+wlr-randr
 woff2-font-awesome
 wofi
 xdg-desktop-portal
