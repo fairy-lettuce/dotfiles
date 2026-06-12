@@ -1,4 +1,7 @@
 # gitignore for dotfiles
+# local-only files (private, not for public dotfiles)
+.zshrc.local
+
 # do not track noisy directories
 
 .config/BraveSoftware

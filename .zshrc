@@ -25,6 +25,9 @@ alias lgx2='/usr/bin/lgx2userspace -d /dev/video99'
 # path
 export PATH=$HOME/.local/bin:$PATH
 
+# local overrides (not tracked in dotfiles)
+[ -f ~/.zshrc.local ] && source ~/.zshrc.local
+
 PROMPT='%{%F{blue}%}%n%{%f%}%{%F{foreground}%}@%{%f%}%{%F{cyan}%}%m %{%f%}%{%F{green}%}%~ %{%f%}%{%F{foreground}%}%#%{%f%} '
 
 # powerline
