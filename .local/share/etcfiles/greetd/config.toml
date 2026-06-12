@@ -6,5 +6,8 @@ vt = "next"
 
 # The default session, also known as the greeter.
 [default_session]
-command = "env GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
+# WLR_RENDER_NO_EXPLICIT_SYNC=1: Workaround for NVIDIA explicit-sync fence creation
+# failures (nv_drm_semsurf_fence_create_ioctl) that caused cage to crash before
+# login completed, triggering a greetd restart and a ~1s blackout on Enter.
+command = "env WLR_RENDER_NO_EXPLICIT_SYNC=1 GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
 user = "greeter"
