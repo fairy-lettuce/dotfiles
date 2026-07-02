@@ -22,6 +22,7 @@ Currently super WIP!
 - Notification: [mako](https://github.com/emersion/mako)
 - Lock screen: [swaylock](https://github.com/swaywm/swaylock)
 - Display switcher: [kanshi](https://sr.ht/~emersion/kanshi/) (for dual monitor environment)
+- Image viewer: [oculante](https://github.com/woelper/oculante)
 
 - and a lot more?
 
@@ -40,3 +41,7 @@ This customization includes my original **shakimofu** color scheme — crisp and
 https://github.com/user-attachments/assets/957b88b6-c92a-4d72-a3f1-fe47c8b5444d
 
 shakimofu kawaii <3
+
+## Icon theme
+
+For GTK3.0/4.0, [Colloid-icon-theme](https://github.com/vinceliuice/Colloid-icon-theme) is used with some modification (folder icons follow wallpaper accent colors).

@@ -38,3 +38,16 @@ output_path = "~/.config/swaylock/config"
 [templates.wlogout]
 input_path = "~/.config/matugen/templates/wlogout-colors.css"
 output_path = "~/.config/wlogout/style.css"
+
+[templates.gtk3]
+input_path = "~/.config/matugen/templates/gtk3-colors.css"
+output_path = "~/.config/gtk-3.0/gtk.css"
+
+[templates.gtk4]
+input_path = "~/.config/matugen/templates/gtk4-colors.css"
+output_path = "~/.config/gtk-4.0/gtk.css"
+
+[templates.folder-color]
+input_path = "~/.config/matugen/templates/folder-color.txt"
+output_path = "~/.config/matugen/generated/folder-color.hex"
+post_hook = "~/.local/bin/update-folder-icons.sh"

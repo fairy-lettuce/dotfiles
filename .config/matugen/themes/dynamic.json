@@ -1,0 +1,14 @@
+{
+  "theme": {
+    "dynamic_primary": {
+      "light": { "color": "#a7e1d8" },
+      "dark": { "color": "#b5ece4" },
+      "default": { "color": "#b5ece4" }
+    },
+    "dynamic_secondary": {
+      "light": { "color": "#99b4c5" },
+      "dark": { "color": "#a3c1d5" },
+      "default": { "color": "#a3c1d5" }
+    }
+  }
+}

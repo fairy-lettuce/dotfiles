@@ -1,6 +1,9 @@
 {
   "flip_mode": {
     "waybar": true,
-    "alacritty": false
+    "alacritty": false,
+    "gtk3": true,
+    "gtk4": true,
+    "folder": true
   }
 }

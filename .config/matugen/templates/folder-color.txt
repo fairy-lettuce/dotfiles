@@ -1,0 +1,13 @@
+<* if {{ is_dark_mode }} *>
+<* if {{ flip_mode.folder }} *>
+{{ theme.dynamic_secondary.light.hex }}
+<* else *>
+{{ theme.dynamic_secondary.dark.hex }}
+<* endif *>
+<* else *>
+<* if {{ flip_mode.folder }} *>
+{{ theme.dynamic_secondary.dark.hex }}
+<* else *>
+{{ theme.dynamic_secondary.light.hex }}
+<* endif *>
+<* endif *>
