@@ -13,6 +13,8 @@ Currently super WIP!
 
 - Window manager: [niri](https://github.com/YaLTeR/niri)
 - Terminal: [alacritty](https://github.com/alacritty/alacritty)
+- Terminal Multiplexer: [Zellij](https://github.com/zellij-org/zellij)
+- Shell: [fish](https://github.com/fish-shell/fish-shell)
 - File manager: [Thunar](https://gitlab.xfce.org/xfce/thunar)
 - Bar: [waybar](https://github.com/Alexays/Waybar)
 - App launcher: [fuzzel](https://codeberg.org/dnkl/fuzzel)
