@@ -6,8 +6,14 @@ vt = "next"
 
 # The default session, also known as the greeter.
 [default_session]
-# WLR_RENDER_NO_EXPLICIT_SYNC=1: Workaround for NVIDIA explicit-sync fence creation
-# failures (nv_drm_semsurf_fence_create_ioctl) that caused cage to crash before
-# login completed, triggering a greetd restart and a ~1s blackout on Enter.
-command = "env WLR_RENDER_NO_EXPLICIT_SYNC=1 GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
+# Workaround for NVIDIA explicit-sync fence creation failures
+# (nv_drm_semsurf_fence_create_ioctl) that cause cage to crash before login
+# completes, triggering a greetd restart and a ~1s blackout on Enter.
+#   WLR_RENDER_NO_EXPLICIT_SYNC=1 disables client-side explicit sync only.
+#   After the wlroots 0.19->0.20 update this was no longer enough: the fence
+#   failures also come from the DRM backend's atomic-commit out-fence path.
+#   WLR_DRM_NO_ATOMIC=1 forces the legacy DRM interface, which does not use
+#   syncobj out-fences, so the failing ioctl is never called. A single
+#   fullscreen greeter output works fine on the legacy interface.
+command = "env WLR_RENDER_NO_EXPLICIT_SYNC=1 WLR_DRM_NO_ATOMIC=1 GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
 user = "greeter"
