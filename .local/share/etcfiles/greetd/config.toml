@@ -9,11 +9,13 @@ vt = "next"
 # Workaround for NVIDIA explicit-sync fence creation failures
 # (nv_drm_semsurf_fence_create_ioctl) that cause cage to crash before login
 # completes, triggering a greetd restart and a ~1s blackout on Enter.
-#   WLR_RENDER_NO_EXPLICIT_SYNC=1 disables client-side explicit sync only.
-#   After the wlroots 0.19->0.20 update this was no longer enough: the fence
-#   failures also come from the DRM backend's atomic-commit out-fence path.
-#   WLR_DRM_NO_ATOMIC=1 forces the legacy DRM interface, which does not use
-#   syncobj out-fences, so the failing ioctl is never called. A single
-#   fullscreen greeter output works fine on the legacy interface.
-command = "env WLR_RENDER_NO_EXPLICIT_SYNC=1 WLR_DRM_NO_ATOMIC=1 GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
+# The failing sync-file export happens in the GLES2 renderer's explicit-sync
+# path (confirmed 2026-07-11: WLR_RENDER_NO_EXPLICIT_SYNC=1 and
+# WLR_DRM_NO_ATOMIC=1 did NOT stop the semsurf errors). A login greeter needs
+# no GPU acceleration, so force the software (pixman) renderer, which never
+# creates GPU fences and sidesteps the broken NVIDIA ioctl entirely.
+#   WLR_RENDERER=pixman           - CPU rendering, no GPU explicit sync
+#   WLR_DRM_NO_ATOMIC=1           - legacy KMS, no atomic out-fences
+#   WLR_RENDER_NO_EXPLICIT_SYNC=1 - belt-and-suspenders, disables client sync
+command = "env WLR_RENDERER=pixman WLR_RENDER_NO_EXPLICIT_SYNC=1 WLR_DRM_NO_ATOMIC=1 GTK_USE_PORTAL=0 GDK_DEBUG=no-portals cage -s -m last -- regreet"
 user = "greeter"
