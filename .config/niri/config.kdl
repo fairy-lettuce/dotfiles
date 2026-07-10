@@ -1,3 +1,13 @@
+// 入力メソッド(fcitx)の環境変数。Discord など XWayland で動く GTK/Qt アプリの
+// 入力不具合(最初の1文字が変換されない等)を避けるため GTK/QT_IM_MODULE も設定する。
+// fcitx5 の「Wayland では不要」通知は出るが、入力の正常動作を優先。
+environment {
+    XMODIFIERS "@im=fcitx"
+    GTK_IM_MODULE "fcitx"
+    QT_IM_MODULE "fcitx"
+    SDL_IM_MODULE "fcitx"
+}
+
 input {
     keyboard {
         xkb {
@@ -596,6 +606,9 @@ binds {
 
 	// Pick clipboard history
 	Mod+P hotkey-overlay-title="Clipboard History" { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
+
+	// Emoji picker (bemoji, fuzzel-backed). -t types (needs wtype), -c also copies to clipboard.
+	Mod+Semicolon hotkey-overlay-title="Emoji Picker: bemoji" { spawn-sh "BEMOJI_PICKER_CMD='fuzzel -d -p 🔍' bemoji -t -c"; }
 }
 
 // spawns - apps needed at startup
