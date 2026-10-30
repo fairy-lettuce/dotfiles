@@ -1,0 +1,13 @@
+<* if {{ is_dark_mode }} *>
+<* if {{ flip_mode.gtk4 }} *>
+light
+<* else *>
+dark
+<* endif *>
+<* else *>
+<* if {{ flip_mode.gtk4 }} *>
+dark
+<* else *>
+light
+<* endif *>
+<* endif *>

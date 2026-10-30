@@ -31,6 +31,11 @@ post_hook = "makoctl reload"
 input_path = "~/.config/matugen/templates/fuzzel-colors.ini"
 output_path = "~/.config/fuzzel/colors.ini"
 
+[templates.fcitx5-classicui-theme]
+input_path = "~/.config/matugen/templates/fcitx5-classicui-theme.conf"
+output_path = "~/.local/share/fcitx5/themes/shakimofu/theme.conf"
+post_hook = "~/.local/bin/generate-fcitx5-panel.py ~/.local/share/fcitx5/themes/shakimofu && busctl --user call org.fcitx.Fcitx5 /controller org.fcitx.Fcitx.Controller1 ReloadAddonConfig s classicui"
+
 [templates.swaylock]
 input_path = "~/.config/matugen/templates/swaylock-config"
 output_path = "~/.config/swaylock/config"
@@ -47,6 +52,11 @@ output_path = "~/.config/gtk-3.0/gtk.css"
 input_path = "~/.config/matugen/templates/gtk4-colors.css"
 output_path = "~/.config/gtk-4.0/gtk.css"
 
+[templates.gtk-mode]
+input_path = "~/.config/matugen/templates/gtk-mode.txt"
+output_path = "~/.config/matugen/generated/gtk-mode.txt"
+post_hook = "~/.local/bin/sync-color-scheme.sh"
+
 [templates.folder-color]
 input_path = "~/.config/matugen/templates/folder-color.txt"
 output_path = "~/.config/matugen/generated/folder-color.hex"
@@ -59,3 +69,7 @@ output_path = "~/.config/zellij/themes/shakimofu.kdl"
 [templates.starship]
 input_path = "~/.config/matugen/templates/starship.toml"
 output_path = "~/.config/starship.toml"
+
+[templates.helix]
+input_path = "~/.config/matugen/templates/helix-theme.toml"
+output_path = "~/.config/helix/themes/shakimofu.toml"

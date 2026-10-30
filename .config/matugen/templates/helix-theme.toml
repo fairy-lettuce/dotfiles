@@ -1,0 +1,166 @@
+# Interface
+"ui.background" = { bg = "none" } # 端末側の背景を使う
+"ui.window" = { fg = "aqua" } # 分割したときのウィンドウの境界線
+"ui.text" = "white" # 恐らくフォールバック用のテキストの色，シンタックスハイライトにも適用される
+
+"special" = "orange" # ファイルピッカーのファジーマッチの色，シンタックスハイライトのspecialと共通?
+"ui.background.separator" = { fg = "white" } # ファイルピッカーの検索箇所との境界線
+"ui.text.focus" = { modifiers = ["reversed"] } # ファイルピッカーで選択している行の色
+
+"ui.virtual.ruler" = { fg = "gray", bg = "white", modifiers = ["reversed"] }
+"ui.virtual.whitespace" = "gray"
+"ui.virtual.indent-guide" = "white"
+"ui.virtual.inlay-hint" = "gray"
+
+"ui.statusline" = { fg = "white", bg = "deep_blue" } # アクティブウィンドウのみ
+"ui.statusline.inactive" = { fg = "gray" } # アクティブじゃない方のウィンドウ
+# アクティブウィンドウだけに表示される
+"ui.statusline.normal" = { fg = "black", bg = "aqua" }
+"ui.statusline.insert" = { fg = "black", bg = "orange" }
+"ui.statusline.select" = { fg = "black", bg = "purple" }
+# "ui.statusline.separator" = { fg = "aqua", bg = "white" } # どこが変わっているかわからない
+
+"ui.cursor" = { fg = "black", bg = "white" }
+"ui.cursor.insert" = { fg = "black", bg = "white" }
+"ui.cursor.select" = { fg = "black", bg = "white" }
+"ui.cursor.match" = { bg = "white", modifiers = ["dim"] }
+# カーソルがある箇所の色
+"ui.cursor.primary" = { fg = "black", bg = "white", modifiers = ["slow_blink"] }
+"ui.cursor.secondary" = "white"
+# カーソルがある行の色
+"ui.cursorline.primary" = { fg = "orange", underline = { style = "line" } }
+"ui.cursorline.secondary" = { fg = "orange", underline = { style = "line" } }
+# カーソルとカーソルがある行とは別の選択されている箇所の色
+"ui.selection" = { fg = "deep_blue", bg = "white" }
+
+"ui.menu" = { fg = "white", bg = "deep_blue" }
+"ui.menu.selected" = { fg = "orange", underline = { style = "line" } }
+# fgがスクロールバー，bgがスクロールエリア
+"ui.menu.scroll" = { fg = "aqua", bg = "black" }
+"ui.help" = { fg = "white", bg = "deep_blue" } # メニューを開いているときにその上部に出る説明を表示する場所
+"ui.popup.info" = { fg = "white", bg = "deep_blue" } # マイナーモードのポップアップ
+
+# エディターの左側にあるデバッグやエラーなどの●が出る場所の色
+"ui.gutter" = { bg = "none" } # fgは恐らく意味が無いと思われる
+"ui.linenr" = { fg = "white", bg = "none" } # 行番号のある位置
+# カーソルがある箇所は全て選択されるのでcursorlineで背景を統一するなどすると過剰になりすぎない
+"ui.linenr.selected" = { fg = "orange", bg = "none", modifiers = ["bold"] }
+
+# Diagnostic
+# フォールバック用以下のが設定されていなければ使われる
+"diagnostic" = "white" 
+# コードの該当箇所に対して適用され，シンタックスハイライトなどを上書きする
+"diagnostic.info" = { bg = "white", underline = { style = "line" } }
+"diagnostic.hint" = { fg = "yellow", underline = { style = "line" } }
+"diagnostic.warning" = { fg = "orange", underline = { style = "line" } }
+"diagnostic.error" = { fg = "red", underline = { style = "line" } }
+# ガターの●，ステータスラインの●，コード上部の説明の３箇所に適用されるので注意
+# コード上部のみに背景や下線を適用したくても他の2箇所にも適用されれるのでこの書き方が一番無難な気がする
+"info" = "white"
+"hint" = "yellow"
+"warning" = "orange"
+"error" = "red"
+"debug" = "red"
+
+# (git)diff color
+"diff.plus" = "green"
+"diff.delta" ="blue"
+"diff.minus" = "pink"
+
+# Syntax high light
+"type" = { fg = "emerald_green" }
+"type.buildin" = "emerald_green"
+"comment" = { fg = "gray", modifiers = ["italic"] }
+"operator" = "white"
+"variable" = { fg = "aqua" }
+"variable.other.member" = "brown"
+"constant" = "aqua"
+"constant.numeric" = "emerald_green"
+"attributes" = { fg = "blue" }
+"namespace" = "blue"
+"string" = "brown"
+"string.special.url" = { fg = "brown", underline = { style = "line" } }
+"constant.character.escape" = "yellow"
+"constructor" = "aqua"
+"keyword" = { fg = "blue", underline = { style = "line" } }
+"keyword.control" = "purple"
+"function" = "yellow"
+"label" = "blue"
+
+# Markup 
+"ui.popup" = { bg = "deep_blue" } # マークアップや入力補完のポップアップの色
+"markup.heading" = { fg = "yellow", modifiers = ["bold"], underline = { style = "line" }  }
+"markup.list" = { fg = "pink" }
+"markup.bold" = { fg = "emerald_green", modifiers = ["bold"] }
+"markup.italic" = { fg = "blue", modifiers = ["italic"] }
+"markup.link.url" = { fg = "blue", underline = { style = "line" } }
+"markup.link.text" = "pink"
+"markup.quote" = "yellow"
+"markup.raw" = "brown"
+
+[palette]
+<* if {{ is_dark_mode }} *>
+<* if {{ flip_mode.alacritty }} *>
+black = "{{ theme.background.light.hex }}"
+gray = "{{ theme.white.light.hex | to_color | set_lightness: 50.0 | format: "hex" }}"
+white = "{{ theme.foreground.light.hex }}"
+blue = "{{ theme.bright_blue.light.hex }}"
+deep_blue = "{{ theme.blue.light.hex }}"
+aqua = "{{ theme.cyan.light.hex }}"
+purple = "{{ theme.magenta.light.hex }}"
+red = "{{ theme.red.light.hex }}"
+pink = "{{ theme.bright_red.light.hex }}"
+orange = "{{ theme.orange.light.hex }}"
+brown = "{{ theme.orange.light.hex | lighten: -20.0 }}"
+yellow = "{{ theme.yellow.light.hex }}"
+green = "{{ theme.green.light.hex }}"
+emerald_green = "{{ theme.cyan.light.hex | to_color | blend: {{ theme.green.light.hex | to_color }}, 0.5 }}"
+<* else *>
+black = "{{ theme.background.dark.hex }}"
+gray = "{{ theme.white.dark.hex | to_color | set_lightness: 50.0 | format: "hex" }}"
+white = "{{ theme.foreground.dark.hex }}"
+blue = "{{ theme.bright_blue.dark.hex }}"
+deep_blue = "{{ theme.blue.dark.hex }}"
+aqua = "{{ theme.cyan.dark.hex }}"
+purple = "{{ theme.magenta.dark.hex }}"
+red = "{{ theme.red.dark.hex }}"
+pink = "{{ theme.bright_red.dark.hex }}"
+orange = "{{ theme.orange.dark.hex }}"
+brown = "{{ theme.orange.dark.hex | lighten: -20.0 }}"
+yellow = "{{ theme.yellow.dark.hex }}"
+green = "{{ theme.green.dark.hex }}"
+emerald_green = "{{ theme.cyan.dark.hex | to_color | blend: {{ theme.green.dark.hex | to_color }}, 0.5 }}"
+<* endif *>
+<* else *>
+<* if {{ flip_mode.alacritty }} *>
+black = "{{ theme.background.dark.hex }}"
+gray = "{{ theme.white.dark.hex | to_color | set_lightness: 50.0 | format: "hex" }}"
+white = "{{ theme.foreground.dark.hex }}"
+blue = "{{ theme.bright_blue.dark.hex }}"
+deep_blue = "{{ theme.blue.dark.hex }}"
+aqua = "{{ theme.cyan.dark.hex }}"
+purple = "{{ theme.magenta.dark.hex }}"
+red = "{{ theme.red.dark.hex }}"
+pink = "{{ theme.bright_red.dark.hex }}"
+orange = "{{ theme.orange.dark.hex }}"
+brown = "{{ theme.orange.dark.hex | lighten: 20.0 }}"
+yellow = "{{ theme.yellow.dark.hex }}"
+green = "{{ theme.green.dark.hex }}"
+emerald_green = "{{ theme.cyan.dark.hex | to_color | blend: {{ theme.green.dark.hex | to_color }}, 0.5 }}"
+<* else *>
+black = "{{ theme.background.light.hex }}"
+gray = "{{ theme.white.light.hex | to_color | set_lightness: 50.0 | format: "hex" }}"
+white = "{{ theme.foreground.light.hex }}"
+blue = "{{ theme.bright_blue.light.hex }}"
+deep_blue = "{{ theme.blue.light.hex }}"
+aqua = "{{ theme.cyan.light.hex }}"
+purple = "{{ theme.magenta.light.hex }}"
+red = "{{ theme.red.light.hex }}"
+pink = "{{ theme.bright_red.light.hex }}"
+orange = "{{ theme.orange.light.hex }}"
+brown = "{{ theme.orange.light.hex | lighten: 20.0 }}"
+yellow = "{{ theme.yellow.light.hex }}"
+green = "{{ theme.green.light.hex }}"
+emerald_green = "{{ theme.cyan.light.hex | to_color | blend: {{ theme.green.light.hex | to_color }}, 0.5 }}"
+<* endif *>
+<* endif *>
