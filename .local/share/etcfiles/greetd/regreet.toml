@@ -27,7 +27,7 @@ cursor_theme_name = "Adwaita"
 cursor_blink = true
 
 # Font name and size
-font_name = "Cantarell 16"
+font_name = "Noto Sans CJK JP 16"
 
 # Icon theme name
 icon_theme_name = "Adwaita"
