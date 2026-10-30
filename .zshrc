@@ -33,3 +33,6 @@ PROMPT='%{%F{blue}%}%n%{%f%}%{%F{foreground}%}@%{%f%}%{%F{cyan}%}%m %{%f%}%{%F{g
 # powerline
 powerline-daemon -q
 . /usr/share/powerline/bindings/zsh/powerline.zsh
+
+# editor
+export EDITOR=helix
