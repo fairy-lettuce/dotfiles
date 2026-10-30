@@ -18,7 +18,7 @@ window#waybar {
 #left-workspaces, #left-windows, #center, #right-inhibitor,
 #right-device, #right-tray, #right-clock, #right-power {
     background-color: @background;
-	background-image: url("/home/mei/.local/share/waybar/paper-pattern.webp");
+	background-image: url("paper-pattern.webp");
 	background-repeat: repeat;
 	background-position: 152px 290px;
     background-blend-mode: hard-light;
@@ -39,7 +39,7 @@ window#waybar {
 /* Widgets */
 #workspaces button, #idle_inhibitor, #systemd-failed-units, #pulseaudio, #gamemode,
 #network, #cpu, #memory, #backlight, #tray, #clock, #custom-power {
-	background-image: url("/home/mei/.local/share/waybar/paper-pattern.webp");
+	background-image: url("paper-pattern.webp");
 	background-repeat: repeat;
 	background-position: 152px 290px;
     background-blend-mode: hard-light;
@@ -90,7 +90,7 @@ label {
 #workspaces button:hover {
 	/* background-image is necessary because GTK3 forces animation with background-image */
 	background-color: shade(@secondary, 1.2);
-	background-image: url("/home/mei/.local/share/waybar/paper-pattern.webp");
+	background-image: url("paper-pattern.webp");
 	background-repeat: repeat;
 	background-position: 152px 290px;
     background-blend-mode: hard-light;
@@ -102,7 +102,7 @@ label {
 
 .cffi-niri-windows .tile {
     background-color: @primary;
-	background-image: url("/home/mei/.local/share/waybar/paper-pattern.webp");
+	background-image: url("paper-pattern.webp");
 	background-repeat: repeat;
 	background-position: 420px 320px;
     background-blend-mode: hard-light;
