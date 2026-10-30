@@ -1,29 +1,77 @@
 # gitignore for dotfiles
-# local-only files (private, not for public dotfiles)
+# local-only files
 .zshrc.local
+.config/fish/local.fish
+.config/fish/fish_variables
+
+# files containing credentials etc.
+.config/gh/hosts.yml
+.config/atcoder-cli-nodejs/config.json
 
 # do not track noisy directories
 
+.config/blender
 .config/BraveSoftware
+.config/chromium
 .config/Code
 .config/Code - OSS
+.config/Claude
+.config/Claude-3p
+.config/coeiroink-v2
+.config/configstore
+.config/dconf
+.config/devin
 .config/discord
 .config/Electron
+.config/font-manager
+.config/freerdp
+.config/fspy
+.config/gconf
 .config/go
+.config/google-chrome
 .config/ibus
+.config/libreoffice
 .config/matplotlib
+.config/menus
+.config/microsoft-edge
+.config/Moonlight Game Streaming Project
 .config/mozc
+.config/Nextcloud
+.config/NuGet
 .config/obs-studio
 .config/obsidian
+.config/opencode
+.config/opera
+.config/pacher-studio
+.config/procps
 .config/pulse
+.config/rclone
+.config/remmina
+.config/Slack
 .config/sunshine
+.config/tetrio-desktop
 .config/unity3d
+.config/VA_11_Hall_A
+.config/vivaldi
+.config/vlc
+.config/voicevox
 .config/VSCodium
 
-# large binary, installed separately (not for dotfiles)
+# cache
+
+.config/fcitx5/conf/cached_layouts
+.config/csharp.history
+.config/QtProject.conf
+.config/easyeffectsrc
+.config/kritarc
+.config/kritadisplayrc
+.config/zoom*.conf
+.config/Artemis Desktop Project/Artemis.conf
+
+# large binary for testing
 .local/bin/niri
 
-# Python projects (uv), e.g. .local/share/pkgnote
+# Python/uv related files
 .venv/
 __pycache__/
 *.pyc
