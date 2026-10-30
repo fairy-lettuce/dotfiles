@@ -1,0 +1,1129 @@
+// pkgnote packages.kdl — 手動編集可(pkgnote fetch/categorize が追記)
+
+tool {
+    cli {
+        terminal {
+            package "alacritty" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        multiplexer {
+            package "zellij" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "tmux" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        text-editor {
+            package "nano" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "helix" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "neovim" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        monitor {
+            package "btop" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "nvtop" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        filer {
+            package "thunar" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "yazi" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        man {
+            package "man-db" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "man-pages" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "man-pages-ja" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "less" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        hardware {
+            package "kanshi" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        misc {
+            package "evtest" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fastfetch" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "sl" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        decoration {
+            package "powerline" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "matugen" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+    }
+
+    gui {
+        audio-visual {
+            package "vlc" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "vlc-plugin-ffmpeg" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "obs-studio" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "com.obsproject.Studio" from="flatpak" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        filer {
+            package "nemo" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "ffmpegthumbnailer" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        browser {
+            package "brave-bin" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        remote-control {
+            package "freerdp" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "sunshine" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "apollo" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "moonlight-qt" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "artemis-qt-git" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        picker {
+            package "fuzzel" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "wofi" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        ime {
+            package "fcitx5" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fcitx5-configtool" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fcitx5-gtk" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fcitx5-qt" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fcitx5-hazkey-bin" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fcitx5-mozc-ut" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "hazkey-zenzai-model" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "mozc-ut" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        font {
+            package "font-manager" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "fontforge" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "ttfautohint" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "ttfautohint-debug" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        wallpaper {
+            package "awww-bin" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "swaybg" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        texteditor {
+            package "obsidian" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        officesuite {
+            package "libreoffice-still" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "libreoffice-still-ja" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        social {
+            package "com.discordapp.Discord" from="flatpak" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        system-ui {
+            package "waybar" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "waybar-niri-windows-bin" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "wlogout" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "swayidle" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "swaylock" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        notification {
+            package "mako" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+    }
+}
+
+creative {
+    modeling {
+        package "blender" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "blender-plugin-fspy" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "fspy" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "fspy-debug" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    illust {
+        package "krita" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    voice {
+        package "coeiroink" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "voicevox-appimage" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+}
+
+game {
+    platform {
+        package "steam" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    util {
+        package "gamemode" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "lib32-gamemode" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "gamescope" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "wine" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "mangohud" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "lib32-mangohud" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "lgx2userspace-git" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "wine-mono" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "winetricks" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    games {
+        package "tetrio-desktop" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+}
+
+dev {
+    c-sharp {
+        package "dotnet-sdk-7.0-bin" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "dotnet-runtime" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "dotnet-sdk" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "dotnet-sdk-9.0" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    r {
+        package "r" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    rust {
+        package "rustup" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    cpp {
+        package "clang" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    fortran {
+        package "gcc-fortran" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    ide {
+        package "visual-studio-code-bin" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "vscodium-bin" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "code-marketplace" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "vscodium-marketplace" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    tool {
+        package "git" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "github-cli" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    package-manager {
+        package "uv" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    toolchain {
+        package "lld" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "nasm" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    coding-agent {
+        package "claude-code" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "claude-desktop-bin" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "gemini-cli" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "antigravity-cli" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "ollama-cuda" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+}
+
+system {
+    kernel {
+        package "linux" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "linux-firmware" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "linux-headers" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    base {
+        package "base" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "base-devel" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    boot {
+        package "grub" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "efibootmgr" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "os-prober" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    network {
+        package "networkmanager" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "firewalld" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    bluetooth {
+        package "bluez" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    package-manager {
+        package "flatpak" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "yay" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "pacman-contrib" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    shell {
+        package "zsh" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "fish" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "powershell-bin" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    compositor {
+        package "niri" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "sway" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    greeter {
+        package "greetd" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "greetd-regreet" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "cage" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "lightdm" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "lightdm-gtk-greeter" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    portal {
+        package "xdg-desktop-portal" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "xdg-desktop-portal-gnome" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "xdg-desktop-portal-gtk" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "xdg-desktop-portal-wlr" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    keyring {
+        package "gnome-keyring" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    device {
+        package "ntfs-3g" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    gpu {
+        package "nvidia-open" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "nvidia-utils" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    job-scheduler {
+        package "cronie" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "at" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    camera {
+        package "anker-powerconf-c200-linux-tools" from="foreign" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    audio {
+        package "pipewire-alsa" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+
+        package "pipewire-pulse" from="pacman" first_installed_on="ruan" {
+            installed_on "ruan"
+        }
+    }
+
+    font {
+        latin {
+            package "noto-fonts" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "maplemono-nf" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "maplemononl-nf" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        cjk {
+            package "adobe-source-han-sans-jp-fonts" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "adobe-source-han-serif-jp-fonts" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "ttf-rounded-mgenplus" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "ttf-udev-gothic" from="foreign" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "otf-ipaexfont" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "noto-fonts-cjk" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+
+        other {
+            package "noto-fonts-emoji" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "powerline-fonts" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+
+            package "otf-font-awesome" from="pacman" first_installed_on="ruan" {
+                installed_on "ruan"
+            }
+        }
+    }
+}
+
+uncategorized {
+    package "adw-gtk-theme" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "alsa-utils" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "android-tools" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "android-udev" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "bluez-utils" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "brightnessctl" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "cabextract" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "chafa" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "cliphist" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "cloudflared" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "davfs2" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "ddcutil" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "ddgr" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "deno" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "distrobox" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "fortune-mod" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "fuse-overlayfs" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "ghostscript" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "git-filter-repo" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "gst-plugins-base" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "gst-plugins-good" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "gvfs" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "hugo" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "intel-ucode" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "lib32-nvidia-utils" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "libinput-tools" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "libva-utils" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "libwebp-utils" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "lutris" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "lxqt-policykit" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "nextcloud-client" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "nodejs" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "nss-mdns" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "nvidia-container-toolkit" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "oculante" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "opencl-nvidia" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "openrgb" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "brother-dcpj987n-cups-bin" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "pandoc-cli" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "pavucontrol" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "pkgstats" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "podman" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "qt5-wayland" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "rclone" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "remmina" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "slirp4netns" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "starship" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "sway-contrib" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "tailscale" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "tumbler" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "usbutils" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "vulkan-tools" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "wayvnc" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "wl-clipboard" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "wlr-randr" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "woff2-font-awesome" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "wtype" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "xorg-xwayland" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "xwayland-satellite" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "aurscan-manticore-bin-release-git" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "bemoji" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "livesplit-one-druid" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "nanoem-git-local" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "openai-codex-bin" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "tinty-git" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "tuisky" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "weylus-bin" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "wl-gammarelay-rs" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "xone-dkms" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "zotero" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "com.usebottles.bottles" from="flatpak" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "opencode" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "elan-lean" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "elan-lean-debug" from="foreign" first_installed_on="ruan"
+
+    package "lldb" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "lazygit" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "dotnet-runtime-9.0-bin" from="foreign" first_installed_on="ruan"
+    package "dotnet-targeting-pack-9.0-bin" from="foreign" first_installed_on="ruan"
+
+    package "dotnet-sdk-9.0-bin" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "fzf" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "easyeffects" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "lsp-plugins-lv2" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "calf" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "mda.lv2" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "zam-plugins-lv2" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "sane" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "sane-airscan" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "us.zoom.Zoom" from="flatpak" first_installed_on="ruan"
+
+    package "zoom" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "devin-cli-bin" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "boost" from="pacman" first_installed_on="ruan"
+    package "imagemagick" from="pacman" first_installed_on="ruan"
+
+    package "perf" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "slack-desktop" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "memtest_vulkan" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "onnxruntime-cpu" from="pacman" first_installed_on="ruan"
+    package "obs-backgroundremoval" from="foreign" first_installed_on="ruan"
+    package "obs-backgroundremoval-debug" from="foreign" first_installed_on="ruan"
+
+    package "onnxruntime-cuda" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "obs-backgroundremoval-cuda" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "valkey" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "mise" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "gvfs-mtp" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "nvme-cli" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "vlc-plugin-freetype" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "paru" from="foreign" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+
+    package "paru-debug" from="foreign" first_installed_on="ruan"
+
+    package "yadm" from="pacman" first_installed_on="ruan" {
+        installed_on "ruan"
+    }
+}

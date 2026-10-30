@@ -1,0 +1,31 @@
+# pkgnote fetch hook
+#
+# pacman.conf の HookDir に ~/.pacman/ が登録されているため、このファイルを置くだけで
+# 有効になる(/etc への配置は不要)。既存の pkglist.hook / pkglist_foreign.hook は
+# そのまま残し、本 hook は独立ファイルとして追加する(統合しない)。
+#
+# 実行順序: pacman はトリガー一致 hook をファイル名のソート順で実行する。
+# "pkgnote-fetch.hook" は "pkglist.hook" / "pkglist_foreign.hook" より辞書順で後
+# ('pkgn' > 'pkgl')なので、pkglist_*.txt が再生成された後に走ることが保証される。
+# pkgnote fetch はその最新の txt を入力に使う。
+#
+# 失敗時の挙動: PostTransaction フックは非ゼロ終了してもトランザクションに影響しない
+# (トランザクションはフック実行前に完了済み)。念のため `|| true` で握りつぶす。
+#
+# 実行ユーザー: pacman は root で hook を実行する。実処理は同ディレクトリの
+# pkgnote-fetch.sh に委譲し、その中で runuser で呼び出しユーザー($SUDO_USER)の
+# ログイン環境に降りて pkgnote(uv/venv/KDL/git は全てユーザー所有)を走らせる。
+# ここで $SUDO_USER をパスに使うのは、root の $HOME(=/root)を踏まないため & 特定
+# ユーザー名をハードコードしないため。sudo 経由でない直接 root 実行時は $SUDO_USER
+# 未設定で no-op になる。
+
+[Trigger]
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = pkgnote: syncing package notes (KDL) after installs/removes...
+When = PostTransaction
+Exec = /bin/sh -c 'test -n "$SUDO_USER" && sh "/home/$SUDO_USER/.pacman/pkgnote-fetch.sh" || true'

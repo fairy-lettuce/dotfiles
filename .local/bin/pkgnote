@@ -1,0 +1,9 @@
+#!/bin/sh
+# pkgnote — 本体(~/.local/share/pkgnote)を呼ぶだけの薄いシム。
+#
+# uv tool install が自動生成するシムは venv への絶対パスを shebang に焼き込むため、
+# 生成したマシン・ユーザー名に紐づき、dotfiles bare repo で複数マシンに展開する用途に
+# 向かない。そこでこの数行を手書きして dotfiles 管理下に置く(配置構造の考え方
+# ―本体は .local/share/<name>/、エントリーポイントだけ .local/bin/― 自体は
+# uv tool install / pipx のデフォルト挙動を踏襲している)。
+exec uv run --project "$HOME/.local/share/pkgnote" pkgnote "$@"
