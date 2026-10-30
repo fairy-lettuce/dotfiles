@@ -19,3 +19,27 @@
 .config/sunshine
 .config/unity3d
 .config/VSCodium
+
+# large binary, installed separately (not for dotfiles)
+.local/bin/niri
+
+# Python projects (uv), e.g. .local/share/pkgnote
+.venv/
+__pycache__/
+*.pyc
+
+# matugen outputs (generated from .config/matugen/templates)
+.config/waybar/colors.css
+.config/alacritty/themes/colors.toml
+.config/mako/config
+.config/fuzzel/colors.ini
+.config/swaylock/config
+.config/wlogout/style.css
+.config/gtk-3.0/gtk.css
+.config/gtk-4.0/gtk.css
+.config/matugen/generated/
+.config/zellij/themes/shakimofu.kdl
+.config/starship.toml
+.config/helix/themes/shakimofu.toml
+.local/share/fcitx5/themes/shakimofu/
+.config/matugen/themes/dynamic.json
