@@ -47,6 +47,14 @@ def run(machine: str | None = None) -> int:
         want = {n for n, d in decisions.items() if d.install and by_name[n].source == backend}
         have = installed.get(backend, set())
         missing = sorted(n for n in want - have if n not in mismatched)
+        provided: dict[str, str] = {}
+        as_dep: list[str] = []
+        if missing and backend in backends.PROVIDES_BACKENDS:
+            explicit = set().union(*installed.values())
+            sat = backends.classify(missing, explicit)
+            provided = sat.provided
+            as_dep = sorted(sat.as_dependency)
+            missing = [n for n in missing if n in sat.missing]
         extra = sorted(n for n in have - want if mismatched.get(n) != backend)
         total_missing += len(missing)
         total_extra += len(extra)
@@ -55,6 +63,14 @@ def run(machine: str | None = None) -> int:
         for name in missing:
             print("  " + term.red("- MISSING") + " (条件上は入るが未導入): "
                   + term.cyan(by_name[name].label))
+        for name, by in sorted(provided.items()):
+            print("  " + term.green("= PROVIDED") + f" ({by} が provides + conflicts/replaces): "
+                  + term.cyan(by_name[name].label if name in by_name else name))
+        for name in as_dep:
+            print("  " + term.yellow("~ DEPENDENCY") + " (依存として導入済み。明示にするなら下のコマンド): "
+                  + term.cyan(by_name[name].label if name in by_name else name))
+        if as_dep:
+            print("    " + term.dim(backends.asexplicit_hint(as_dep)))
         for name in extra:
             d = decisions.get(name)
             if d is None:
@@ -69,7 +85,7 @@ def run(machine: str | None = None) -> int:
                 else:
                     why = "install-if が偽"
             print("  " + term.yellow("+ EXTRA") + f"   ({why}): " + term.cyan(shown))
-        if not missing and not extra:
+        if not missing and not extra and not as_dep:
             print("  " + term.green("= in sync"))
         print()
 

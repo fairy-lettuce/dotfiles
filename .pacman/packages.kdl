@@ -380,6 +380,7 @@ system {
         package "networkmanager" from="pacman" first-installed-on="ruan"
         package "firewalld" from="pacman" first-installed-on="ruan"
         package "nss-mdns" from="pacman" first-installed-on="ruan"
+        package "openssh" from="pacman"
     }
 
     bluetooth {
@@ -476,6 +477,7 @@ system {
             package "powerline-fonts" from="pacman" first-installed-on="ruan"
             package "otf-font-awesome" from="pacman" first-installed-on="ruan"
             package "woff2-font-awesome" from="pacman" first-installed-on="ruan"
+            package "ttf-nerd-fonts-symbols" from="pacman"
         }
     }
 
@@ -489,6 +491,8 @@ system {
         package "gvfs" from="pacman" first-installed-on="ruan"
         package "gvfs-mtp" from="pacman" first-installed-on="ruan"
         package "ntfs-3g" from="pacman" first-installed-on="ruan"
+        package "snapper" from="pacman" install-if="btrfs"
+        package "snap-pac" from="pacman" install-if="btrfs"
     }
 
     polkit {

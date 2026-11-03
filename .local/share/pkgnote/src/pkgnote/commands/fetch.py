@@ -1,6 +1,6 @@
 """``pkgnote fetch`` — 実システムの状態を packages.kdl に取り込む。
 
-pacman hook(現在は無効化中。SPEC「hook」参照)/ flatpak ラッパーから自動呼び出しされる
+pacman hook(``/etc/pacman.d/hooks/pkgnote-fetch.hook``。SPEC「hook」参照)/ flatpak ラッパーから自動呼び出しされる
 想定(手動実行も可)。対象は常に現在のマシン(``--machine`` は現在のマシン名と一致する場合のみ可)。
 入力は「``pacman -Qqen`` / ``-Qqem`` / ``flatpak list --app`` の明示インストール集合」と、前回 fetch 時に観測した
 集合(``~/.local/state/pkgnote/installed_<machine>.txt``、マシンローカル)。前回との差分で
@@ -102,6 +102,7 @@ def run(
 
     # --- 既知パッケージの条件更新 ----------------------------------------------
     removals = 0
+    not_installed: list = []
     for pkg in known.values():
         d = decide(pkg, ctx.names)
         is_inst = pkg.name in installed
@@ -115,6 +116,26 @@ def run(
             if seen is not None and pkg.name in seen:
                 changes.append(_record_removed(pkg, m))
                 removals += 1
+            else:
+                not_installed.append(pkg)
+
+    # 記録しない「未導入」のずれは status / deploy と同じ分類で知らせる(書き込みには使わない)
+    by_backend: dict[str, list] = {}
+    for pkg in not_installed:
+        by_backend.setdefault(pkg.source, []).append(pkg)
+    for backend, pkgs in by_backend.items():
+        sat = None
+        if backend in backends.PROVIDES_BACKENDS:
+            try:
+                sat = backends.classify({p.name for p in pkgs}, installed)
+            except backends.BackendError as exc:  # 表示のための分類なので fetch は止めない
+                warnings.append(f"provides / 依存の判定に失敗しました: {exc}")
+        for pkg in pkgs:
+            if sat is not None and pkg.name in sat.provided:
+                notes.append(f"{pkg.label}: {sat.provided[pkg.name]} で導入済み(provides + conflicts/replaces)")
+            elif sat is not None and pkg.name in sat.as_dependency:
+                notes.append(f"{pkg.label}: 依存として導入済み"
+                             f"(明示にするなら `{backends.asexplicit_hint([pkg.name])}`)")
             else:
                 notes.append(f"{pkg.label}: 条件上は入るが未導入(MISSING)")
 

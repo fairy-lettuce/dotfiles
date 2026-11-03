@@ -256,3 +256,41 @@ def test_header_kept_and_output_stable(seeded):
     # もう一度 fetch しても何も変わらない(冪等)
     assert fetch() == 0
     assert seeded.read_kdl() == text
+
+
+def test_missing_notes_use_provides_and_dependency(seeded, capsys):
+    """fetch の「未導入」の表示は status / deploy と同じ分類。書き込みは変えない。"""
+    from pkgnote import backends
+
+    seeded.write_kdl(BASE + 'extra {\n    package "paru" from="foreign"\n    package "libfoo"\n'
+                     '    package "dotnet-sdk"\n}\n')
+    seeded.set_installed(pacman=["vim", "dotnet-sdk-9.0-bin"], foreign=["paru-bin"])
+    seeded.infos = [
+        backends.PkgInfo("paru-bin", frozenset({"paru"}), frozenset({"paru"})),
+        backends.PkgInfo("dotnet-sdk-9.0-bin", frozenset({"dotnet-sdk"})),
+    ]
+    seeded.deps = {"libfoo"}
+    capsys.readouterr()
+    assert fetch() == 0
+    out = capsys.readouterr().out
+    assert "paru: paru-bin で導入済み" in out
+    assert "libfoo: 依存として導入済み" in out and "--asexplicit -- libfoo" in out
+    assert "dotnet-sdk: 条件上は入るが未導入(MISSING)" in out
+    # write path unchanged: no skip-if for these never-seen names
+    for name in ("paru", "libfoo", "dotnet-sdk"):
+        assert "skip-if" not in props(name)
+
+
+def test_missing_notes_survive_classify_failure(seeded, monkeypatch, capsys):
+    from pkgnote import backends
+
+    def boom(*a):
+        raise backends.BackendError("pacman -T broke")
+
+    monkeypatch.setattr(backends, "classify", boom)
+    seeded.write_kdl(BASE + 'extra {\n    package "libfoo"\n}\n')
+    capsys.readouterr()
+    assert fetch() == 0
+    captured = capsys.readouterr()
+    assert "libfoo: 条件上は入るが未導入(MISSING)" in captured.out
+    assert "pacman -T broke" in captured.err

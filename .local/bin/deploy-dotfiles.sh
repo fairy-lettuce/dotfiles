@@ -18,8 +18,9 @@ NOCONFIRM=false
 CONFIRM_PKGBUILD=false
 
 MACHINES_TOML="${PKGNOTE_MACHINES_FILE:-$HOME/.config/machines.toml}"
-ETCFILES_DIR="${ETCFILES_DIR:-$HOME/.local/share/etcfiles}"
-SYSTEM_PRESET_DIR="${SYSTEM_PRESET_DIR:-/etc/systemd/system-preset}"
+SYSTEM_SERVICES_DIR="$HOME/.config/dotfiles/system-services"
+SSHD_CONFIG_DIR="${SSHD_CONFIG_DIR:-/etc/ssh}"                     # overridable for tests
+SNAPPER_CONFIGS_DIR="${SNAPPER_CONFIGS_DIR:-/etc/snapper/configs}"  # overridable for tests
 USER_SERVICES_DIR="$HOME/.config/dotfiles/user-services"
 STATE_FILE="$HOME/.local/state/deploy-dotfiles/managed-units.txt"
 WALLPAPER_LOCAL="$HOME/.config/dotfiles/wallpaper-random.local"
@@ -44,7 +45,7 @@ Prerequisites (manual, on a fresh install):
 
 Steps: python/uv -> machine identity (machine-init.py, yadm alt)
   -> AUR helper -> pkgnote deploy -> wallpapers -> initial color scheme
-  -> etcfiles + system services -> user services -> things to do (also
+  -> /etc files (etcfiles) -> system services -> user services -> things to do (also
   saved to ~/deploy-<YYYYMMDD-HHMMSS>.log)
 
 Usage: deploy-dotfiles.sh [--dry-run] [--noconfirm [--confirm-pkgbuild]]
@@ -122,9 +123,13 @@ run() {
         printf '  [dry-run] would run:'; printf ' %q' "$@"; echo
     else
         printf '  +'; printf ' %q' "$@"; echo
+        [[ "$1" == sudo ]] && SUDO_USED=true
         "$@"
     fi
 }
+SUDO_USED=false     # sudo was used in this run (credentials are probably cached)
+ETCFILES_STATUS=""  # deployed / declined / failed (empty: not asked, e.g. dry-run)
+SYSTEM_LISTED=()    # units in the system-services lists
 
 # Like run, but a failure is non-fatal: warn, add to the report, return 1.
 try() {
@@ -306,7 +311,7 @@ step_machine() {
     [[ -n "$MACHINE_NAME" ]] || die "machine-init.py returned no name"
     after=$(cksum "$MACHINES_TOML" 2> /dev/null || true)
     if [[ "$before" != "$after" ]]; then
-        REPORT_MANUAL+=("$(tilde "$MACHINES_TOML") was updated; review and commit it (it is public): yadm --yadm-repo ~/.dotfiles add ~/.config/machines.toml && yadm --yadm-repo ~/.dotfiles commit")
+        machines_toml_commit_note
     fi
 
     local classes rc=0
@@ -333,6 +338,18 @@ step_machine() {
     if [[ "$DRY_RUN" == true ]]; then
         info "[dry-run] note: yadm alt is not run, so per-machine alternates (##class/##hostname) are not created;"
         info "          files and units selected by alternates may be missing from this preview."
+    fi
+}
+
+# Report item for committing machines.toml, with a leak-check / user.email check.
+# Only the hook commands (grepped, never printed) and user.email are read from git config.
+machines_toml_commit_note() {
+    REPORT_MANUAL+=("$(tilde "$MACHINES_TOML") was updated; review and commit it (it is public): yadm --yadm-repo ~/.dotfiles add ~/.config/machines.toml && yadm --yadm-repo ~/.dotfiles commit")
+    local email
+    email=$(yadm gitconfig --get user.email 2> /dev/null || true)
+    REPORT_MANUAL+=("The dotfiles repo would commit as user.email: ${email:-(not set)}")
+    if ! yadm gitconfig --get-regexp '^hook\..*\.command' 2> /dev/null | grep -q git-leakcheck; then
+        REPORT_MANUAL+=("WARNING: the leak-check hook (git-leakcheck) is not registered, so the leak check is not active; verify that user.email above is your personal address before committing")
     fi
 }
 
@@ -402,7 +419,12 @@ step_aur_helper() {
         REPORT_FAILED+=("Installing $pkg was declined. $not_installed")
         return
     fi
-    (cd "$TMPDIR_DEPLOY/$pkg" && try makepkg -si "${NC[@]}") || { REPORT_FAILED+=("$not_installed"); return; }
+    # not in a subshell: try's report entry must reach this shell
+    pushd "$TMPDIR_DEPLOY/$pkg" > /dev/null
+    local mrc=0
+    try makepkg -si "${NC[@]}" || mrc=$?
+    popd > /dev/null
+    [[ $mrc -eq 0 ]] || { REPORT_FAILED+=("$not_installed"); return; }
     if ! command -v "$helper" > /dev/null; then
         warn "$helper is not available after makepkg"
         REPORT_FAILED+=("$not_installed")
@@ -551,7 +573,7 @@ enable_units() {
         return
     fi
 
-    local to_enable=() u state
+    local to_enable=() u state skipped=0
     for u; do
         state=$("${sc[@]}" is-enabled "$u" 2> /dev/null) || true
         case "$state" in
@@ -559,21 +581,27 @@ enable_units() {
             disabled|indirect) to_enable+=("$u") ;;
             ""|not-found)
                 warn "$u: unit file not found; skipped"
+                skipped=$((skipped + 1))
                 REPORT_MISSING_UNITS+=("$u ($scope): unit file not found (package not installed?)") ;;
             *)
                 warn "$u is $state; skipped"
+                skipped=$((skipped + 1))
                 REPORT_SERVICES+=("$u ($scope) is $state; not enabled by this script") ;;
         esac
     done
 
     if [[ ${#to_enable[@]} -eq 0 ]]; then
-        info "all listed $scope units are already enabled"
+        if [[ $skipped -eq 0 ]]; then
+            info "all listed $scope units are already enabled"
+        else
+            info "nothing to enable ($skipped listed $scope unit(s) skipped, see above)"
+        fi
         return
     fi
     echo "  The following $scope units will be enabled:"
     printf '    %s\n' "${to_enable[@]}"
     local cmd=(systemctl --user enable "${to_enable[@]}")
-    [[ "$scope" == system ]] && cmd=(sudo systemctl preset --preset-mode=enable-only "${to_enable[@]}")
+    [[ "$scope" == system ]] && cmd=(sudo systemctl enable "${to_enable[@]}")
     if [[ "$DRY_RUN" == true ]]; then
         run "${cmd[@]}"
         return
@@ -585,29 +613,19 @@ enable_units() {
     if [[ "$scope" == system ]]; then ENABLED_SYSTEM+=("${to_enable[@]}"); else ENABLED_USER+=("${to_enable[@]}"); fi
 }
 
-# ---------------------------------------------------------------- 7. etcfiles, system services
-
-system_services() {
-    local dir="$1" units
-    shopt -s nullglob
-    local files=("$dir"/50-dotfiles*.preset)
-    shopt -u nullglob
-    mapfile -t units < <(read_units "${files[@]}")
-    enable_units system "${units[@]}"
-}
+# ---------------------------------------------------------------- 7. /etc files
 
 step_etcfiles() {
-    step "7. /etc files (etcfiles) and system services"
+    step "7. /etc files (etcfiles)"
     if ! command -v etcfiles > /dev/null; then
-        warn "etcfiles not found; skipping /etc files and system services"
-        REPORT_FAILED+=("[$CURRENT_STEP] etcfiles not found (expected ~/.local/bin/etcfiles); /etc files and system services were skipped")
+        ETCFILES_STATUS=failed
+        warn "etcfiles not found; skipping /etc files"
+        REPORT_FAILED+=("[$CURRENT_STEP] etcfiles not found (expected ~/.local/bin/etcfiles); /etc files were skipped")
         return
     fi
     if [[ "$DRY_RUN" == true ]]; then
         printf '  + etcfiles -n deploy\n'
         etcfiles -n deploy || warn "etcfiles -n deploy failed"
-        info "system units (from $(tilde "$ETCFILES_DIR")/systemd/system-preset):"
-        system_services "$ETCFILES_DIR/systemd/system-preset"
         return
     fi
     local ans
@@ -615,27 +633,37 @@ step_etcfiles() {
         ans=$(ask 'Copy config files to /etc using etcfiles? If you want to dry-run, type "d" and you can try again later. [y/n/d]: ' y "" 'y|n|d')
         case "$ans" in
             d) etcfiles -n deploy || warn "etcfiles -n deploy failed" ;;
-            y) try etcfiles deploy || true
-               system_services "$SYSTEM_PRESET_DIR"
+            y) if try etcfiles deploy; then ETCFILES_STATUS=deployed; else ETCFILES_STATUS=failed; fi
                return ;;
-            n) info "skipped /etc files and system services"; return ;;
+            n) ETCFILES_STATUS=declined; info "skipped /etc files"; return ;;
         esac
     done
 }
 
-# ---------------------------------------------------------------- 8. user services
+# ---------------------------------------------------------------- 8, 9. services
 
-step_user_services() {
-    step "8. User services"
-    local units files
+# service_step <system|user> <list dir>
+service_step() {
+    local scope="$1" dir="$2" units files
     shopt -s nullglob
-    files=("$USER_SERVICES_DIR"/*.list)
+    files=("$dir"/*.list)
     shopt -u nullglob
     mapfile -t units < <(read_units "${files[@]}")
-    enable_units user "${units[@]}"
+    [[ "$scope" == system ]] && SYSTEM_LISTED=("${units[@]}")
+    enable_units "$scope" "${units[@]}"
 }
 
-# ---------------------------------------------------------------- 9. report
+step_system_services() {
+    step "8. System services"
+    service_step system "$SYSTEM_SERVICES_DIR"
+}
+
+step_user_services() {
+    step "9. User services"
+    service_step user "$USER_SERVICES_DIR"
+}
+
+# ---------------------------------------------------------------- 10. report
 
 check_fonts() {
     if ! command -v fc-list > /dev/null; then
@@ -671,11 +699,10 @@ manual_reminders() {
     if [[ "$url" == https://* ]]; then
         REPORT_MANUAL+=("Register this machine's SSH key on GitHub (in the browser), check with 'ssh -T git@github.com', then switch the dotfiles remote to SSH: yadm --yadm-repo ~/.dotfiles remote set-url origin $DOTFILES_SSH_URL")
     fi
-    local f
-    for f in config.local leakcheck.local; do
-        [[ -e "$HOME/.config/git/$f" ]] ||
-            REPORT_MANUAL+=("If this is a work machine, create ~/.config/git/$f")
-    done
+    [[ -e "$HOME/.config/git/config.local" ]] ||
+        REPORT_MANUAL+=("Create ~/.config/git/config.local with [user] name/email (not tracked; on a work machine also add the includeIf for the work directory)")
+    [[ -e "$HOME/.config/git/leakcheck.local" ]] ||
+        REPORT_MANUAL+=("If this is a work machine, create ~/.config/git/leakcheck.local")
     REPORT_MANUAL+=("Join the tailnet: sudo tailscale up")
     REPORT_MANUAL+=("Check firmware updates: fwupdmgr refresh && fwupdmgr get-updates")
 }
@@ -687,10 +714,76 @@ print_section() {
     printf '  - %s\n' "$@"
 }
 
+# First value of an sshd_config keyword (lowercased), "" if not set, "unknown" if an
+# unreadable file comes before a decision. sshd -T needs root, so read the files:
+# drop-ins (Included at the top of sshd_config on Arch) first, then sshd_config; the
+# first occurrence outside a Match block wins; "Key value" and "Key=value" both work.
+sshd_option() {
+    local files=() f v=""
+    shopt -s nullglob
+    files=("$SSHD_CONFIG_DIR"/sshd_config.d/*.conf "$SSHD_CONFIG_DIR/sshd_config")
+    shopt -u nullglob
+    for f in "${files[@]}"; do
+        [[ -r "$f" ]] || { echo unknown; return; }
+        v=$(awk -v keys="$*" 'BEGIN { FS = "[ \t]*[ \t=][ \t]*"; n = split(tolower(keys), k, " ") }
+            { sub(/^[ \t]+/, ""); sub(/[ \t\r]+$/, "") }
+            /^#/ || $0 == "" { next }
+            tolower($1) == "match" { exit }
+            { for (i = 1; i <= n; i++) if (tolower($1) == k[i]) { print tolower($2); exit } }' "$f")
+        [[ -n "$v" ]] && { echo "$v"; return 0; }
+    done
+    return 0
+}
+
+# sshd enabled but password login not (provably) disabled. Conservative: unknown = warn.
+check_sshd() {
+    if ! contains sshd.service "${ENABLED_SYSTEM[@]}" &&
+        [[ "$(systemctl is-enabled sshd.service 2> /dev/null || true)" != enabled ]]; then
+        return
+    fi
+    local pw kbd pam
+    pw=$(sshd_option PasswordAuthentication)
+    kbd=$(sshd_option KbdInteractiveAuthentication ChallengeResponseAuthentication)
+    pam=$(sshd_option UsePAM)
+    if [[ "$pw" != no ]]; then
+        REPORT_MANUAL+=("sshd is enabled and password login may be allowed: register your SSH public key, confirm key login works, then disable password authentication (e.g. /etc/ssh/sshd_config.d/10-no-password.conf: PasswordAuthentication no)")
+    elif [[ "$kbd" != no && ( "$pam" == yes || "$pam" == unknown ) ]]; then
+        REPORT_MANUAL+=("sshd: PasswordAuthentication is no, but KbdInteractiveAuthentication with UsePAM yes can still ask for passwords; once key login works, also set KbdInteractiveAuthentication no")
+    fi
+}
+
+# btrfs machine with snapper but without a config for /.
+check_snapper() {
+    contains btrfs "${MACHINE_CLASSES[@]}" || return 0
+    command -v snapper > /dev/null || return 0
+    local cfg="$SNAPPER_CONFIGS_DIR/root" exists
+    if [[ -x "$SNAPPER_CONFIGS_DIR" ]]; then
+        [[ -e "$cfg" ]] && exists=true || exists=false
+    elif [[ "$SUDO_USED" == true ]] && sudo -n true 2> /dev/null; then
+        sudo -n test -e "$cfg" 2> /dev/null && exists=true || exists=false
+    else
+        local list
+        list=$(snapper list-configs 2> /dev/null) || return 0  # unknown: no false alarm
+        awk '$1 == "root"' <<< "$list" | grep -q . && exists=true || exists=false
+    fi
+    [[ "$exists" == false ]] &&
+        REPORT_MANUAL+=("snapper has no config for /: sudo snapper -c root create-config /")
+    return 0
+}
+
+# greetd listed but its config (regreet) not deployed by etcfiles in this run.
+check_greetd() {
+    [[ "$ETCFILES_STATUS" == declined || "$ETCFILES_STATUS" == failed ]] || return 0
+    contains greetd.service "${SYSTEM_LISTED[@]}" || return 0
+    REPORT_MANUAL+=("/etc files were not deployed (etcfiles $ETCFILES_STATUS): greetd will start with the package default config (not regreet) until you run etcfiles deploy")
+}
+
 step_report() {
-    REPORT_DONE=true
     check_fonts
     check_not_active
+    check_sshd
+    check_snapper
+    check_greetd
     manual_reminders
     local report
     report=$(
@@ -701,7 +794,7 @@ step_report() {
         print_section "Failed or incomplete steps:" "${REPORT_FAILED[@]}"
         print_section "Manual steps:" "${REPORT_MANUAL[@]}"
     )
-    step "9. Report"
+    step "10. Report"
     echo "$report"
     if [[ "$DRY_RUN" == true ]]; then
         printf '\n[dry-run] would save this report to %s\n' "$(tilde "$LOG_FILE")"
@@ -709,6 +802,8 @@ step_report() {
         echo "$report" > "$LOG_FILE"
         printf '\nSaved to %s\n' "$(tilde "$LOG_FILE")"
     fi
+    # only now: if a check above fails, the EXIT trap still writes the report (with set +e)
+    REPORT_DONE=true
 }
 
 # ---------------------------------------------------------------- main
@@ -723,5 +818,6 @@ step_packages
 step_wallpapers
 step_colors
 step_etcfiles
+step_system_services
 step_user_services
 step_report

@@ -7,6 +7,8 @@
 # 実行ユーザー: pacman は root でフックを実行する。root が直接実行するのは /bin/sh と
 # /usr/bin/runuser (どちらも root の持ち物) だけで、pkgnote (ユーザーのファイル) は
 # runuser で呼び出しユーザー ($SUDO_USER) のログイン環境に降りてから実行する。
+# `runuser -l -c <cmd> -- <user>`: オプションを先に書き、`--` の後にユーザー名を置く
+# (ユーザー名が `-` で始まってもオプションとして解釈されない)。
 # sudo を経由しない root での実行では $SUDO_USER がないので、何もしない。
 #
 # 入力: pkgnote fetch は `pacman -Qqen` / `-Qqem` / `flatpak list` を自分で問い合わせる。
@@ -27,4 +29,4 @@ Target = *
 [Action]
 Description = pkgnote: syncing package notes (KDL) after installs/removes...
 When = PostTransaction
-Exec = /bin/sh -c '[ -n "$SUDO_USER" ] && /usr/bin/runuser -l "$SUDO_USER" -c "pkgnote fetch" || true'
+Exec = /bin/sh -c '[ -n "$SUDO_USER" ] && /usr/bin/runuser -l -c "pkgnote fetch" -- "$SUDO_USER" || true'

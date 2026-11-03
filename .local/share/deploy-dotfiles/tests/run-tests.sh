@@ -27,8 +27,8 @@ SYSBIN="$WORK/sysbin"
 mkdir -p "$SYSBIN"
 for c in bash sh env cat sed grep awk find sort tr mktemp rm mkdir mv cp ls \
          basename dirname readlink realpath date head tail wc diff sleep shuf \
-         touch chmod tee cut ln less cmp uniq python3 uname id true false yes unshare cksum mkfifo; do
-    ln -s "$(command -v "$c")" "$SYSBIN/$c"
+         touch chmod tee cut ln less cmp uniq python3 uname id true false test yes unshare cksum mkfifo; do
+    ln -s "$(type -P "$c")" "$SYSBIN/$c"  # type -P: the binary, not a shell builtin
 done
 
 PASS=0
@@ -60,14 +60,14 @@ setup() {
     export STUB_DIR="$T" REAL_HOME REAL_UV
     export HOME="$T/home"
     export PATH="$T/bin:$SYSBIN"
-    export SYSTEM_PRESET_DIR="$T/root/etc/systemd/system-preset"
     export DEPLOY_COUNTDOWN=2
+    export SSHD_CONFIG_DIR="$T/ssh" SNAPPER_CONFIGS_DIR="$T/snapper-configs"
     unset PKGNOTE_MACHINES_FILE ETCFILES_DIR ETCFILES_ROOT ETCFILES_TTY MATUGEN_CONFIG DYNAMIC_JSON
     mkdir -p "$T/bin" "$HOME/.config/git" "$HOME/.config/matugen/themes" "$HOME/.dotfiles"
     : > "$T/calls.log"
     cd "$T"
 
-    stub sudo 'exec "$@"'
+    stub sudo '[[ "$1" == -n ]] && shift; exec "$@"'
     stub pacman ''
     stub matugen ''
     stub awww '[[ "$1" == query ]] && cat "$STUB_DIR/awww_current" 2>/dev/null; exit 0'
@@ -111,6 +111,11 @@ exit 0'
 case "$1" in
     config) if [[ $# -eq 2 && "$2" != --* ]]; then cat "$STUB_DIR/yadm_hostname" 2>/dev/null || exit 1; fi ;;
     remote) echo "https://github.com/example/dotfiles.git" ;;
+    gitconfig)
+        case "$2" in
+            --get) cat "$STUB_DIR/git_email" 2>/dev/null || exit 1 ;;
+            --get-regexp) cat "$STUB_DIR/git_hooks" 2>/dev/null || exit 1 ;;
+        esac ;;
 esac
 exit 0'
     stub git '
@@ -123,12 +128,7 @@ exit 0'
     stub makepkg '
 h=$(basename "$PWD"); h=${h%-bin}
 printf "#!/bin/bash\n" > "$STUB_DIR/bin/$h"; chmod +x "$STUB_DIR/bin/$h"'
-    stub etcfiles '
-[[ " $* " == *" -n "* ]] && exit 0
-for f in "${ETCFILES_DIR:-$HOME/.local/share/etcfiles}"/systemd/system-preset/*; do
-    [[ "$f" == *"##"* ]] && continue
-    mkdir -p "$SYSTEM_PRESET_DIR"; cp -L "$f" "$SYSTEM_PRESET_DIR/"
-done'
+    stub etcfiles ''
     stub systemctl '
 scope=system; [[ "$1" == --user ]] && { scope=user; shift; }
 cmd="$1"; shift
@@ -159,16 +159,18 @@ EOF
     cp "$REAL_HOME/.local/share/deploy-dotfiles/machine-init.py" "$HOME/.local/share/deploy-dotfiles/"
     echo knownbox > "$T/yadm_hostname"
     printf 'laptop\nbtrfs\nwork\n' > "$T/pkgnote_classes"
-    local pd="$HOME/.local/share/etcfiles/systemd/system-preset"
-    mkdir -p "$pd" "$HOME/.config/dotfiles/user-services"
-    cp "$REAL_HOME/.local/share/etcfiles/systemd/system-preset/"* "$pd/"
-    ln -s '50-dotfiles-btrfs.preset##class.btrfs' "$pd/50-dotfiles-btrfs.preset"
+    local sd="$HOME/.config/dotfiles/system-services"
+    mkdir -p "$sd" "$HOME/.config/dotfiles/user-services"
+    cp "$REAL_HOME/.config/dotfiles/system-services/common.list" \
+        "$REAL_HOME/.config/dotfiles/system-services/btrfs.list##class.btrfs" "$sd/"
+    ln -s 'btrfs.list##class.btrfs' "$sd/btrfs.list"
     cp "$REAL_HOME/.config/dotfiles/user-services/common.list" "$HOME/.config/dotfiles/user-services/"
     cp "$REAL_HOME/.config/matugen/default-colors.kdl" "$HOME/.config/matugen/"
     # Packages "installed": all system/user units exist but are disabled
     printf '%s disabled\n' NetworkManager.service bluetooth.service firewalld.service \
         greetd.service sshd.service tailscaled.service snapper-timeline.timer snapper-cleanup.timer > "$T/units-system"
     printf '%s disabled\n' waybar.service awww-daemon.service wallpaper-random.timer > "$T/units-user"
+    printf '%s enabled\n' pipewire.service pipewire-pulse.service >> "$T/units-user"  # enabled by packages
     printf 'Pancake Sans,Pancake Sans Bold\nMaple Syrup Mono\nNoto Sans\n' > "$T/fonts"
 }
 
@@ -209,7 +211,6 @@ test_dry_run_changes_nothing() {
     after=$(snapshot "$HOME")
     assert_eq "$RC" 0 "exit code"
     assert_eq "$after" "$before" "HOME snapshot"
-    assert_no_file "$SYSTEM_PRESET_DIR"
     local c="$T/calls.log"
     assert_not "$c" '^sudo '
     assert_not "$c" '^pacman '
@@ -223,7 +224,7 @@ test_dry_run_changes_nothing() {
     assert_contains "$c" '^etcfiles -n deploy$'
     assert_not "$c" '^etcfiles deploy'
     assert_contains "$T/out" 'would run: sudo pacman -S --needed uv'
-    assert_contains "$T/out" 'would run: sudo systemctl preset --preset-mode=enable-only snapper-timeline.timer snapper-cleanup.timer NetworkManager.service .*tailscaled.service$'
+    assert_contains "$T/out" 'would run: sudo systemctl enable snapper-timeline.timer snapper-cleanup.timer NetworkManager.service .*tailscaled.service$'
     assert_contains "$T/out" 'would run: systemctl --user enable waybar.service awww-daemon.service wallpaper-random.timer'
     assert_contains "$T/out" 'would run: yadm alt'
     assert_contains "$T/out" 'would save this report'
@@ -300,6 +301,195 @@ test_ctrl_c_in_machine_init() {
     assert_not "$T/calls.log" '^pkgnote deploy'
 }
 
+test_nothing_to_enable_message() {
+    printf '%s enabled\n' NetworkManager.service bluetooth.service firewalld.service greetd.service \
+        sshd.service tailscaled.service > "$T/units-system"   # snapper timers: not installed
+    printf '%s enabled\n' waybar.service awww-daemon.service wallpaper-random.timer \
+        pipewire.service pipewire-pulse.service > "$T/units-user"
+    run_deploy '' --noconfirm
+    assert_contains "$T/out" 'nothing to enable \(2 listed system unit\(s\) skipped, see above\)'
+    assert_not "$T/out" 'all listed system units are already enabled'
+    assert_contains "$T/out" 'all listed user units are already enabled'
+    assert_not "$T/calls.log" 'systemctl (--user )?enable'
+}
+
+test_makepkg_failure_reported() {
+    fail_on makepkg '-si'
+    run_deploy '' --noconfirm
+    assert_eq "$RC" 0 "exit code"
+    local log
+    log=$(latest_log)
+    assert_contains "$log" '\[3\. AUR helper\] failed \(exit status 1\): makepkg -si --noconfirm'
+    assert_contains "$log" 'paru is not installed; AUR packages will fail'
+}
+
+test_machines_toml_commit_note() {
+    rm "$T/yadm_hostname"
+    echo "someone@example.org" > "$T/git_email"
+    run_deploy '\n' --noconfirm
+    local log
+    log=$(latest_log)
+    assert_contains "$log" 'machines.toml was updated; review and commit it'
+    assert_contains "$log" 'The dotfiles repo would commit as user.email: someone@example.org'
+    assert_contains "$log" 'leak-check hook \(git-leakcheck\) is not registered'
+    # hook registered: no warning, email still shown; hook values are never printed
+    rm "$HOME"/deploy-*.log
+    printf '[knownbox]\nform = "laptop"\n' > "$HOME/.config/machines.toml"
+    echo 'hook.leakcheck.command SECRET-PATH/git-leakcheck' > "$T/git_hooks"
+    rm -f "$T/git_email"
+    run_deploy '\n' --noconfirm
+    log=$(latest_log)
+    assert_contains "$log" 'would commit as user.email: \(not set\)'
+    assert_not "$log" 'not registered'
+    assert_not "$T/out" 'SECRET-PATH'
+    # unchanged machines.toml: no commit note at all
+    rm "$HOME"/deploy-*.log
+    echo knownbox > "$T/yadm_hostname"
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" 'user.email|machines.toml was updated'
+}
+
+# ---- report checks: sshd password login, snapper root config, greetd without etcfiles
+
+sshd_note='sshd is enabled and password login may be allowed'
+
+test_sshd_password_note() {
+    # no readable config at all -> warn (sshd gets enabled this run)
+    run_deploy '' --noconfirm
+    assert_contains "$(latest_log)" "$sshd_note"
+    assert_contains "$(latest_log)" '10-no-password.conf: PasswordAuthentication no'
+    # drop-in disables it -> no note
+    rm "$HOME"/deploy-*.log
+    mkdir -p "$SSHD_CONFIG_DIR/sshd_config.d"
+    printf 'PasswordAuthentication no\n' > "$SSHD_CONFIG_DIR/sshd_config.d/10-no-password.conf"
+    printf 'Include /etc/ssh/sshd_config.d/*.conf\nPasswordAuthentication yes\n' > "$SSHD_CONFIG_DIR/sshd_config"
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" "$sshd_note"
+}
+
+test_sshd_first_match_and_unreadable() {
+    sed -i 's/^sshd.service .*/sshd.service enabled/' "$T/units-system"
+    mkdir -p "$SSHD_CONFIG_DIR/sshd_config.d"
+    printf 'PasswordAuthentication yes\n' > "$SSHD_CONFIG_DIR/sshd_config.d/05-yes.conf"
+    printf 'passwordauthentication no\n' > "$SSHD_CONFIG_DIR/sshd_config.d/10-no.conf"
+    run_deploy '' --noconfirm
+    assert_contains "$(latest_log)" "$sshd_note"   # an earlier "yes" wins
+    rm "$HOME"/deploy-*.log "$SSHD_CONFIG_DIR/sshd_config.d/05-yes.conf"
+    printf 'Match User x\n  PasswordAuthentication no\n' > "$SSHD_CONFIG_DIR/sshd_config.d/01-match.conf"
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" "$sshd_note"         # Match blocks are skipped; 10-no.conf decides
+    rm "$HOME"/deploy-*.log
+    printf 'x\n' > "$SSHD_CONFIG_DIR/sshd_config.d/00-secret.conf"
+    chmod 000 "$SSHD_CONFIG_DIR/sshd_config.d/00-secret.conf"
+    run_deploy '' --noconfirm
+    assert_contains "$(latest_log)" "$sshd_note"   # unreadable before the "no": conservative
+    chmod 644 "$SSHD_CONFIG_DIR/sshd_config.d/00-secret.conf"
+}
+
+test_sshd_separators_and_kbd_interactive() {
+    sed -i 's/^sshd.service .*/sshd.service enabled/' "$T/units-system"
+    mkdir -p "$SSHD_CONFIG_DIR/sshd_config.d"
+    local f="$SSHD_CONFIG_DIR/sshd_config.d/10-no-password.conf" kbd_note='KbdInteractiveAuthentication with UsePAM yes'
+    for line in 'PasswordAuthentication=no' '  PasswordAuthentication   =  no' $'PasswordAuthentication\tno'; do
+        printf '# comment\n%s\n' "$line" > "$f"
+        rm -f "$HOME"/deploy-*.log
+        run_deploy '' --noconfirm
+        assert_not "$(latest_log)" "$sshd_note"
+    done
+    # password off, but keyboard-interactive via PAM (UsePAM yes, KbdInteractive default yes)
+    printf 'UsePAM yes\n' > "$SSHD_CONFIG_DIR/sshd_config"
+    rm -f "$HOME"/deploy-*.log
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" "$sshd_note"
+    assert_contains "$(latest_log)" "$kbd_note"
+    printf 'PasswordAuthentication no\nKbdInteractiveAuthentication=no\n' > "$f"
+    rm -f "$HOME"/deploy-*.log
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" "$kbd_note|$sshd_note"
+}
+
+test_sshd_not_enabled_no_note() {
+    sed -i '/^enable sshd.service$/d' "$HOME/.config/dotfiles/system-services/common.list"
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" "$sshd_note"
+}
+
+snapper_note='snapper has no config for /: sudo snapper -c root create-config /'
+
+test_snapper_root_config_note() {
+    # snapper not installed: nothing
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" 'snapper has no config'
+    # installed, configs dir readable, no root config -> note
+    stub snapper 'echo "Config | Subvolume"; echo "-------+----------"'
+    mkdir -p "$SNAPPER_CONFIGS_DIR"
+    rm "$HOME"/deploy-*.log
+    run_deploy '' --noconfirm
+    assert_contains "$(latest_log)" "$snapper_note"
+    assert_not "$T/calls.log" '^snapper'
+    # root config present -> no note
+    touch "$SNAPPER_CONFIGS_DIR/root"; rm "$HOME"/deploy-*.log
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" 'snapper has no config'
+}
+
+test_snapper_unreadable_dir() {
+    stub snapper 'echo "Config | Subvolume"; echo "-------+----------"'
+    mkdir -p "$SNAPPER_CONFIGS_DIR"; chmod 000 "$SNAPPER_CONFIGS_DIR"
+    # sudo was used this run (system units enabled) -> sudo -n test -e
+    run_deploy '' --noconfirm
+    assert_contains "$T/calls.log" "^sudo -n test -e $SNAPPER_CONFIGS_DIR/root$"
+    assert_contains "$(latest_log)" "$snapper_note"
+    # sudo used but no cached credentials (sudo -n true fails) -> snapper list-configs instead
+    rm "$HOME"/deploy-*.log; : > "$T/calls.log"
+    sed -i 's/ enabled$/ disabled/' "$T/units-system"   # so sudo is used again this run
+    fail_on sudo '^-n true$'
+    run_deploy '' --noconfirm
+    assert_contains "$T/calls.log" '^sudo -n true$'
+    assert_not "$T/calls.log" '^sudo -n test'
+    assert_contains "$T/calls.log" '^snapper list-configs$'
+    assert_contains "$(latest_log)" "$snapper_note"
+    rm "$T/fail-sudo"
+    # no sudo this run (nothing to enable, helper present) -> snapper list-configs
+    rm "$HOME"/deploy-*.log; : > "$T/calls.log"
+    stub paru ''
+    sed -i 's/ disabled$/ enabled/' "$T/units-system" "$T/units-user"
+    run_deploy '' --noconfirm
+    assert_not "$T/calls.log" '^sudo'
+    assert_contains "$T/calls.log" '^snapper list-configs$'
+    assert_contains "$(latest_log)" "$snapper_note"
+    stub snapper 'printf "Config | Subvolume\n-------+---------\nroot   | /\n"'
+    rm "$HOME"/deploy-*.log
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" 'snapper has no config'
+    # snapper list-configs fails (no root): unknown -> no false alarm
+    stub snapper 'exit 1'
+    rm "$HOME"/deploy-*.log
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" 'snapper has no config'
+    chmod 755 "$SNAPPER_CONFIGS_DIR"
+}
+
+greetd_note='greetd will start with the package default config \(not regreet\)'
+
+test_greetd_note_when_etcfiles_declined_or_failed() {
+    stub paru ''
+    run_deploy "$KEEP"'y\n\n\nn\n\n\n'
+    assert_contains "$(latest_log)" "/etc files were not deployed \\(etcfiles declined\\): $greetd_note"
+    rm "$HOME"/deploy-*.log
+    fail_on etcfiles '^deploy'
+    run_deploy '' --noconfirm
+    assert_contains "$(latest_log)" "/etc files were not deployed \\(etcfiles failed\\): $greetd_note"
+    # deployed -> no note; greetd not listed -> no note
+    rm "$HOME"/deploy-*.log "$T/fail-etcfiles"
+    run_deploy '' --noconfirm
+    assert_not "$(latest_log)" 'greetd will start'
+    rm "$HOME"/deploy-*.log
+    sed -i '/^enable greetd.service$/d' "$HOME/.config/dotfiles/system-services/common.list"
+    run_deploy "$KEEP"'y\n\n\nn\n\n\n'
+    assert_not "$(latest_log)" 'greetd will start'
+}
+
 test_dry_run_new_machine_prints_toml() {
     rm "$T/yadm_hostname"
     local before
@@ -336,7 +526,7 @@ test_full_run_interactive() {
     assert_contains "$c" '^matugen color hex ffffff$'
     assert_contains "$HOME/.config/matugen/themes/dynamic.json" '"#ecbe7f"'
     assert_eq "$(grep -E '^etcfiles' "$c" | tr '\n' '|')" 'etcfiles -n deploy|etcfiles deploy|' "etcfiles calls"
-    assert_contains "$c" '^sudo systemctl preset --preset-mode=enable-only snapper-timeline.timer snapper-cleanup.timer NetworkManager.service bluetooth.service firewalld.service greetd.service sshd.service tailscaled.service$'
+    assert_contains "$c" '^sudo systemctl enable snapper-timeline.timer snapper-cleanup.timer NetworkManager.service bluetooth.service firewalld.service greetd.service sshd.service tailscaled.service$'
     assert_contains "$c" '^systemctl --user enable waybar.service awww-daemon.service wallpaper-random.timer$'
     assert_not "$c" 'systemctl.* (start|--now)'
     local log
@@ -346,7 +536,7 @@ test_full_run_interactive() {
     assert_contains "$log" 'sshd.service \(system\) was enabled but is not running: sudo systemctl start sshd.service'
     assert_contains "$log" 'waybar.service \(user\) was enabled but is not running: systemctl --user start waybar.service'
     assert_contains "$log" 'remote set-url origin git@github.com:fairy-lettuce/dotfiles.git'
-    assert_contains "$log" 'create ~/.config/git/config.local'
+    assert_contains "$log" 'Create ~/.config/git/config.local'
     assert_contains "$log" 'tailscale up'
     assert_contains "$log" 'fwupdmgr'
     assert_not "$log" 'Missing fonts'
@@ -367,16 +557,20 @@ test_full_run_interactive() {
 
 test_etcfiles_prompt_n() {
     stub yay ''
-    run_deploy "$KEEP"'y\n\n\nx\nd\nd\nn\n\n'
+    run_deploy "$KEEP"'y\n\n\nx\nd\nd\nn\n\n\n'
     assert_eq "$RC" 0 "exit code"
     assert_contains "$T/out" 'Copy config files to /etc using etcfiles\? If you want to dry-run, type "d" and you can try again later\. \[y/n/d\]: '
     assert_contains "$T/out" 'Please answer y or n or d'
     assert_eq "$(grep -cE '^etcfiles -n deploy$' "$T/calls.log")" 2 "dry-run count"
     assert_not "$T/calls.log" '^etcfiles deploy'
-    assert_not "$T/calls.log" 'systemctl preset'
+    # system services are a separate step: still offered after declining etcfiles
+    assert_contains "$T/calls.log" '^sudo systemctl enable snapper-timeline.timer'
     assert_contains "$T/calls.log" '^pkgnote deploy --machine knownbox --aur-helper yay$'
     assert_contains "$T/calls.log" '^systemctl --user enable'
-    assert_not "$HOME/.local/state/deploy-dotfiles/managed-units.txt" '^system '
+    assert_contains "$T/out" '==> 7\. /etc files \(etcfiles\)'
+    assert_contains "$T/out" '==> 8\. System services'
+    assert_contains "$T/out" '==> 9\. User services'
+    assert_contains "$T/out" '==> 10\. Report'
 }
 
 test_noconfirm_known_machine() {
@@ -468,9 +662,8 @@ EOF
         'laptop-only.service disabled' 'desktop-only.service disabled' 'masked.service masked' \
         'old.service enabled' 'gone.service disabled' > "$T/units-user"
     echo awww-daemon.service > "$T/active-user"
-    # system: only the btrfs alternate selected; base 50-dotfiles.preset removed
-    local pd="$HOME/.local/share/etcfiles/systemd/system-preset"
-    rm "$pd/50-dotfiles.preset"
+    # system: only the btrfs alternate selected; common.list removed
+    rm "$HOME/.config/dotfiles/system-services/common.list"
     mkdir -p "$HOME/.local/state/deploy-dotfiles"
     printf '%s\n' 'system old-sys.service' 'user old.service' 'user gone.service' 'user waybar.service' \
         > "$HOME/.local/state/deploy-dotfiles/managed-units.txt"
@@ -481,7 +674,7 @@ EOF
     log=$(find "$HOME" -maxdepth 1 -name 'deploy-*.log' | head -1)
     assert_contains "$c" '^systemctl --user enable awww-daemon.service laptop-only.service$'
     assert_not "$c" 'desktop-only'
-    assert_contains "$c" '^sudo systemctl preset --preset-mode=enable-only snapper-timeline.timer snapper-cleanup.timer$'
+    assert_contains "$c" '^sudo systemctl enable snapper-timeline.timer snapper-cleanup.timer$'
     assert_contains "$T/out" 'ignoring unsupported line: disable foo.service'
     assert_contains "$log" 'missing.service \(user\): unit file not found'
     assert_contains "$log" 'masked.service \(user\) is masked'
@@ -500,20 +693,20 @@ EOF
 
 test_wallpaper_custom_path() {
     stub paru ''
-    run_deploy "$KEEP"'y\ny\n~/pics/walls\nn\n\n'
+    run_deploy "$KEEP"'y\ny\n~/pics/walls\nn\n\n\n'
     assert_eq "$RC" 0 "exit code"
     assert_contains "$HOME/.config/dotfiles/wallpaper-random.local" '^WALLPAPER_REPO="\$HOME/pics/walls"$'
     assert_contains "$T/calls.log" "^git clone https://github.com/fairy-lettuce/wallpapers.git $HOME/pics/walls$"
     # Rerun: the .local path is the new default; already cloned -> no clone
     : > "$T/calls.log"
-    run_deploy "$KEEP"'y\ny\n\nn\n\n'
+    run_deploy "$KEEP"'y\ny\n\nn\n\n\n'
     assert_contains "$T/out" 'Path \(default: ~/pics/walls\): '
     assert_contains "$T/out" 'wallpapers already cloned at ~/pics/walls'
     assert_not "$T/calls.log" '^git clone'
 }
 
 test_aur_yay_source_declined() {
-    run_deploy "$KEEP"'yay\nsource\nn\n\n\nn\n\n'
+    run_deploy "$KEEP"'yay\nsource\nn\n\n\nn\n\n\n'
     assert_eq "$RC" 0 "exit code"
     assert_contains "$T/calls.log" '^git clone --depth 1 https://aur.archlinux.org/yay.git '
     assert_not "$T/calls.log" '^makepkg'
@@ -577,12 +770,9 @@ test_path_and_missing_tools() {
 test_failures_are_reported_not_fatal() {
     fail_on pkgnote '^deploy'
     fail_on etcfiles '^deploy'
-    fail_on systemctl '^(--user enable|preset)'
+    fail_on systemctl '^(--user )?enable'
     fail_on matugen 'color'
     rm "$T/bin/fc-list"; stub fc-list 'exit 1'
-    # presets already in /etc from an earlier run (etcfiles fails this time)
-    mkdir -p "$SYSTEM_PRESET_DIR"
-    cp -L "$HOME/.local/share/etcfiles/systemd/system-preset/50-dotfiles.preset" "$SYSTEM_PRESET_DIR/"
     run_deploy '' --noconfirm
     assert_eq "$RC" 0 "exit code"
     local log
@@ -591,7 +781,7 @@ test_failures_are_reported_not_fatal() {
     assert_contains "$log" 'Failed or incomplete steps:'
     assert_contains "$log" '\[4\. Packages \(pkgnote deploy\)\] failed \(exit status 1\): pkgnote deploy'
     assert_contains "$log" 'failed \(exit status 1\): etcfiles deploy'
-    assert_contains "$log" 'failed \(exit status 1\): sudo systemctl preset'
+    assert_contains "$log" 'failed \(exit status 1\): sudo systemctl enable'
     assert_contains "$log" 'failed \(exit status 1\): systemctl --user enable'
     assert_contains "$log" 'matugen failed'
     assert_contains "$log" 'fc-list failed'

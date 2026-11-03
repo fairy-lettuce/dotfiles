@@ -35,11 +35,11 @@ pkgnote machine name|classes   # 論理名 / 条件式で使えるクラス名(y
 
 - 入力はその場で問い合わせる: `pacman -Qqen`(公式・明示)/ `pacman -Qqem`(AUR 等・明示)/
   `flatpak list --app`。どれかが失敗したら何も書かずに終了する。
-- pacman/AUR: `~/.pacman/pkgnote-fetch.hook`(+ `pkgnote-fetch.sh`)が PostTransaction で
-  `pkgnote fetch` を実行する想定だが、**現在は無効**。ユーザー所有の `~/.pacman/` を
-  `pacman.conf` の `HookDir` に登録して root に実行させるのは危険なので登録を外した。
-  root 所有の `/etc/pacman.d/hooks/` への配置と、ヘルパーの root 所有パスへの移動は未実施
-  (TODO)。それまでは pacman 操作後に手動で `pkgnote fetch` を実行する。
+- pacman/AUR: `/etc/pacman.d/hooks/pkgnote-fetch.hook`(etcfiles で配置。元は
+  `~/.local/share/etcfiles/pacman.d/hooks/`。root の持ち物になる)が PostTransaction で、
+  `runuser -l` で呼び出しユーザー(`$SUDO_USER`)に降りてから `pkgnote fetch` を実行する。
+  ヘルパースクリプトは無い(root が直接実行するのは `/bin/sh` と `/usr/bin/runuser` だけ)。
+  sudo を経由しない root での実行では何もしない。
 - flatpak: 宣言的 hook 機構が無いため `~/.config/fish/functions/flatpak.fish` で
   `flatpak` コマンドをラップし、install/uninstall 後に `pkgnote fetch` を呼ぶ。
 

@@ -51,6 +51,18 @@ class Env:
         monkeypatch.setattr(backends, "installed_pacman", lambda: set(self.native))
         monkeypatch.setattr(backends, "installed_foreign", lambda: set(self.foreign))
         monkeypatch.setattr(backends, "installed_flatpak", lambda: set(self.flatpak))
+        # provides / 依存の判定(pacman -T / -Qq / -Qi)もモック。
+        # deps: その名前で依存として入っているもの。infos: インストール済みの PkgInfo。
+        self.deps: set[str] = set()
+        self.infos: list = []
+
+        def unsatisfied(names):
+            provided = {n for i in self.infos for n in i.provides} | {i.name for i in self.infos}
+            return set(names) - self.deps - provided
+
+        monkeypatch.setattr(backends, "unsatisfied", unsatisfied)
+        monkeypatch.setattr(backends, "installed_any", lambda names: set(names) & self.deps)
+        monkeypatch.setattr(backends, "installed_info", lambda: list(self.infos))
 
         def no_exec(cmd):
             raise AssertionError(f"テスト中にコマンドを実行しようとした: {cmd}")

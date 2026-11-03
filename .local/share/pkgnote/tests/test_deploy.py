@@ -135,3 +135,193 @@ def test_flatpak_missing_is_empty_but_failure_is_error(monkeypatch):
     monkeypatch.setattr(backends.subprocess, "run", lambda *a, **k: _Res(2, err="boom"))
     with pytest.raises(BackendError):
         backends.installed_flatpak()
+
+
+# ---------------------------------------------------------------- provides / dependency
+
+PROVIDES_KDL = """
+base {
+    package "vim"
+    package "paru" from="foreign"
+    package "dotnet-sdk"
+    package "libfoo"
+    package "org.A" from="flatpak"
+}
+"""
+
+# real `LC_ALL=C pacman -Qi` format (abridged), incl. versioned provides/conflicts
+QI = """Name            : paru-bin
+Version         : 2.1.0-1
+Description     : Feature packed AUR helper
+Architecture    : x86_64
+URL             : https://github.com/morganamilo/paru
+Licenses        : GPL-3.0-or-later
+Groups          : None
+Provides        : paru=2.1.0
+Depends On      : git  pacman
+Optional Deps   : bat: colored pkgbuild printing
+                  devtools: build in chroot and downloading pkgbuilds
+Required By     : None
+Optional For    : None
+Conflicts With  : paru
+Replaces        : None
+Installed Size  : 9.06 MiB
+Install Reason  : Explicitly installed
+
+Name            : dotnet-sdk-9.0-bin
+Version         : 9.0.300-1
+Description     : The .NET Core SDK version 9.0
+Architecture    : x86_64
+Provides        : dotnet-sdk=9.0  dotnet-sdk-9.0
+Depends On      : dotnet-runtime-9.0-bin
+Conflicts With  : dotnet-sdk-9.0
+Replaces        : None
+Install Reason  : Explicitly installed
+
+Name            : neovim-git
+Version         : 0.12-1
+Provides        : neovim=0.12  vim-plugin-runtime
+Conflicts With  : neovim>=0.10
+Replaces        : vim<9
+Install Reason  : Explicitly installed
+
+Name            : pacman
+Version         : 7.1.0-3
+Provides        : libalpm.so=16-64
+Conflicts With  : None
+Replaces        : None
+"""
+
+
+def test_parse_qi_real_format():
+    infos = {i.name: i for i in backends.parse_qi(QI)}
+    assert infos["paru-bin"].provides == {"paru"} and infos["paru-bin"].conflicts == {"paru"}
+    assert infos["dotnet-sdk-9.0-bin"].provides == {"dotnet-sdk", "dotnet-sdk-9.0"}
+    assert infos["dotnet-sdk-9.0-bin"].conflicts == {"dotnet-sdk-9.0"}
+    assert infos["neovim-git"].conflicts == {"neovim"} and infos["neovim-git"].replaces == {"vim"}
+    assert infos["pacman"].conflicts == frozenset() and infos["pacman"].provides == {"libalpm.so"}
+
+
+def test_classify_requires_provides_and_conflicts(env):
+    env.infos = backends.parse_qi(QI)
+    env.deps = {"libfoo"}
+    sat = backends.classify({"paru", "dotnet-sdk", "libfoo", "vim", "neovim"}, explicit={"paru-bin"})
+    assert sat.provided == {"paru": "paru-bin", "neovim": "neovim-git"}
+    assert sat.as_dependency == {"libfoo"}
+    assert sat.missing == {"dotnet-sdk", "vim"}  # provides only (no conflict) -> still needed
+
+
+def test_classify_replaces_counts(env):
+    env.infos = backends.parse_qi(QI)
+    # neovim-git provides vim-plugin-runtime but neither conflicts nor replaces it
+    sat = backends.classify({"vim-plugin-runtime"}, explicit=set())
+    assert sat.missing == {"vim-plugin-runtime"}
+
+
+def test_deploy_skips_provided_and_dependency(env, capsys):
+    env.write_kdl(PROVIDES_KDL)
+    env.set_installed(foreign=["paru-bin"], pacman=["dotnet-sdk-9.0-bin"])
+    env.infos = backends.parse_qi(QI)
+    env.deps = {"libfoo"}
+    assert main(["deploy", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "$ sudo pacman -S --needed dotnet-sdk vim" in out
+    assert "paru -S" not in out
+    assert "paru: paru-bin で導入済み" in out
+    assert "依存として導入済み(導入はしない): libfoo" in out
+    assert "sudo pacman -D --asexplicit -- libfoo" in out
+    assert "$ flatpak install org.A" in out
+
+
+def test_deploy_nothing_when_all_satisfied(env, capsys):
+    env.write_kdl(PROVIDES_KDL)
+    env.set_installed(pacman=["vim", "dotnet-sdk"], foreign=["paru-bin"], flatpak=["org.A"])
+    env.infos = backends.parse_qi(QI)
+    env.deps = {"libfoo"}
+    assert main(["deploy"]) == 0
+    out = capsys.readouterr().out
+    assert "導入対象なし" in out and "--asexplicit -- libfoo" in out
+
+
+def test_status_provided_and_dependency(env, capsys):
+    env.write_kdl(PROVIDES_KDL)
+    env.set_installed(pacman=["vim"], foreign=["paru-bin"], flatpak=["org.A"])
+    env.infos = backends.parse_qi(QI)
+    env.deps = {"libfoo"}
+    assert main(["status"]) == 0
+    out = capsys.readouterr().out
+    assert "PROVIDED" in out and "paru-bin が provides" in out
+    assert "DEPENDENCY" in out and "sudo pacman -D --asexplicit -- libfoo" in out
+    assert "MISSING=1" in out  # dotnet-sdk: provides only, no conflict
+    assert "dotnet-sdk" in out.split("MISSING")[1]
+
+
+def test_unsatisfied_and_installed_any_parse_pacman(monkeypatch):
+    from pkgnote.backends import BackendError
+
+    calls = []
+
+    def fake(rc, out="", err=""):
+        def run(cmd, **k):
+            calls.append(cmd)
+            assert k["env"]["LC_ALL"] == "C"
+            return _Res(rc, out, err)
+        monkeypatch.setattr(backends.subprocess, "run", run)
+
+    fake(0)
+    assert backends.unsatisfied(["paru", "vim"]) == set()
+    assert calls[-1] == ["pacman", "-T", "--", "paru", "vim"]
+    fake(127, "vim\n")
+    assert backends.unsatisfied(["paru", "vim"]) == {"vim"}
+    calls.clear()
+    assert backends.unsatisfied([]) == set() and calls == []
+    fake(1, err="error: something broke")
+    with pytest.raises(BackendError, match="something broke"):
+        backends.unsatisfied(["x"])
+
+    fake(1, "libfoo\n", "error: package 'zz' was not found\n")
+    assert backends.installed_any(["libfoo", "zz"]) == {"libfoo"}
+    assert calls[-1] == ["pacman", "-Qq", "--", "libfoo", "zz"]
+    fake(0, "a\nb\n")
+    assert backends.installed_any(["a", "b"]) == {"a", "b"}
+    fake(1, "", "error: could not open database\n")
+    with pytest.raises(BackendError, match="could not open database"):
+        backends.installed_any(["a"])
+
+    fake(0, QI)
+    assert [i.name for i in backends.installed_info()][:2] == ["paru-bin", "dotnet-sdk-9.0-bin"]
+    assert calls[-1] == ["pacman", "-Qi"]
+    fake(1, err="error: boom")
+    with pytest.raises(BackendError):
+        backends.installed_info()
+
+    def oserror(*a, **k):
+        raise OSError("no pacman")
+
+    monkeypatch.setattr(backends.subprocess, "run", oserror)
+    with pytest.raises(BackendError):
+        backends.unsatisfied(["x"])
+
+
+def test_installed_any_ignores_provider_fallback(monkeypatch):
+    """pacman 7.1: `-Qq -- sh libgl` prints the providers (bash, libglvnd), not the names."""
+    monkeypatch.setattr(backends.subprocess, "run", lambda *a, **k: _Res(0, "bash\nlibglvnd\n"))
+    assert backends.installed_any(["sh", "libgl"]) == set()
+    monkeypatch.setattr(backends.subprocess, "run",
+                        lambda *a, **k: _Res(1, "libfoo\nbash\n", "error: package 'zz' was not found\n"))
+    assert backends.installed_any(["libfoo", "sh", "zz"]) == {"libfoo"}
+
+
+def test_status_and_deploy_survive_unexpected_names(env, monkeypatch, capsys):
+    env.write_kdl(PROVIDES_KDL)
+    env.set_installed(pacman=["vim"], foreign=["paru-bin"], flatpak=["org.A"])
+    env.infos = backends.parse_qi(QI)
+    env.deps = {"libfoo"}
+    # a misbehaving query returning names that were not asked for must not leak through
+    monkeypatch.setattr(backends, "installed_any", lambda names: set(names) & {"libfoo"} | {"bash"})
+    assert main(["status"]) == 0
+    out = capsys.readouterr().out
+    assert "bash" not in out and "libfoo" in out
+    assert main(["deploy", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "--asexplicit -- libfoo" in out and "bash" not in out

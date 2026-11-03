@@ -141,7 +141,7 @@ machines.toml に無いマシンを対象にするとエラー(条件を誤評�
 
 用語は `etcfiles` の `deploy`(管理ファイル→実システム)/`fetch`(実システム→管理ファイル)に揃える。
 
-- pacman hook(`~/.pacman/pkgnote-fetch.hook`。**現在は無効**、下記「hook」参照)と flatpak ラッパー
+- pacman hook(`/etc/pacman.d/hooks/pkgnote-fetch.hook`、下記「hook」参照)と flatpak ラッパー
   (`~/.config/fish/functions/flatpak.fish`。flatpak には宣言的 hook 機構が無いため)から呼ばれる想定。
   手動実行も可。対象は常に現在のマシンで、`--machine` は現在のマシン名と一致する場合のみ受け付ける
   (このシステムの状態を別マシンの名義で記録しないため。deploy も同様)。
@@ -184,12 +184,27 @@ machines.toml に無いマシンを対象にするとエラー(条件を誤評�
 - 既定では `--noconfirm` を付けない(pacman/AUR ヘルパーの確認や PKGBUILD レビューをそのまま出す)。
   `pkgnote deploy --noconfirm` のときだけ pacman/AUR ヘルパーに `--noconfirm`、flatpak に `-y`。
 - `--dry-run` で実行するコマンドを表示するだけ。`--backend` で対象を限定できる。
+- pacman / foreign では、明示インストールの一覧に無い名前を次のように分類する(`backends.classify`):
+  - `pacman -T -- <名前...>` で満たされない名前 → 導入が必要
+  - その名前のパッケージが依存として入っている(`pacman -Qq -- <名前>` で見つかる)→ 導入しない。
+    明示にするコマンド `sudo pacman -D --asexplicit -- <名前...>` を案内する
+  - インストール済みのパッケージがその名前を provides し、**かつ** conflicts または replaces している
+    (`LC_ALL=C pacman -Qi` の Provides / Conflicts With / Replaces。バージョン指定は名前部分で比較)→
+    代替パッケージで導入済み(例: `paru-bin` は `paru` を provides + conflicts)。導入しない
+  - provides だけで conflicts / replaces しないもの(`dotnet-sdk-9.0-bin` の `dotnet-sdk=9.0` など)は
+    共存する別物なので、導入が必要
+  - `pacman -T` は全部満たされれば exit 0、満たされない名前があれば exit 127。それ以外の終了は `BackendError`。
+    flatpak は対象外
 
 ### status / categorize / machine
 
 - `status`: 算出した集合と実機を突き合わせ、MISSING(入るべきなのに未導入)/ EXTRA(導入済みだが
   条件上は入らない。理由付き)/ from 不一致(記録と違う backend で導入済み)を表示する。書き込みなし。
   `--machine` で他マシンの集合も見られる(比較対象の実機状態はこのシステムのもの)。
+  deploy と同じ分類で、代替パッケージで入っているものは PROVIDED、依存として入っているものは
+  DEPENDENCY(`pacman -D --asexplicit` を案内)と表示し、MISSING に数えない。
+  fetch の「未記録のずれ」の表示も同じ分類を使う。ただし fetch の書き込み(条件の記録)は
+  明示インストールの一覧の差分だけで決め、この分類は使わない。
 - `categorize`: `uncategorized` のパッケージを対話的に正式カテゴリへ移す。package 自身の条件と
   `first-installed-on` はそのまま持っていく。移動先カテゴリの条件で結果が変わるマシンがあれば表示する。
 - `machine name|classes`: 論理名 / クラスの表示。
@@ -222,11 +237,15 @@ ckdl の `dump()` は「ノード名・キーは裸、文字列値だけクオ�
 
 ## hook
 
-- **現在は無効。** 以前は `pacman.conf` の `HookDir` に `~/.pacman/` を登録していたが、ユーザーが
-  書き換えられる hook / スクリプトを root が実行することになり危険なので、登録を外した。
-- TODO(未実施): hook を root 所有の `/etc/pacman.d/hooks/` に置き、ヘルパー(`pkgnote-fetch.sh`。
-  `runuser` で呼び出しユーザーに降りて `pkgnote fetch` を実行する)も root 所有のパスへ移す。
-  それまでは pacman 操作後に手動で `pkgnote fetch` を実行する。
+- hook は `~/.local/share/etcfiles/pacman.d/hooks/pkgnote-fetch.hook` を etcfiles で
+  `/etc/pacman.d/hooks/` にコピーする(root の持ち物になる)。以前は `pacman.conf` の `HookDir` に
+  `~/.pacman/` を登録していたが、ユーザーが書き換えられる hook / スクリプトを root が実行することに
+  なり危険なのでやめた。
+- `Exec` は `/bin/sh -c` の 1 行で、`$SUDO_USER` があれば `runuser -l -c "pkgnote fetch" -- "$SUDO_USER"`
+  でそのユーザーのログイン環境に降りてから `pkgnote fetch` を実行する。ヘルパースクリプトは無い
+  (root が直接実行するのは root 所有の `/bin/sh` と `/usr/bin/runuser` だけ)。sudo を経由しない
+  root での実行では `$SUDO_USER` が無いので何もしない。pacman の hook の解析は `#` 以降をコメントとして
+  切るので、`Exec` に `#` を書かない。
 - fetch は自分でインストール済み一覧を問い合わせるので、他の hook との実行順序には依存しない。
 - `PostTransaction` フックは非ゼロ終了してもトランザクションに影響しない(念のため `|| true` もしてある)。
 

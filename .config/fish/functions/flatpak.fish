@@ -1,6 +1,6 @@
 # flatpak ラッパー — pkgnote 連携用。
 #
-# なぜ fish function なのか: pacman には宣言的な hook 機構(~/.pacman/*.hook)があり、
+# なぜ fish function なのか: pacman には宣言的な hook 機構(/etc/pacman.d/hooks/pkgnote-fetch.hook)があり、
 # install/remove を PostTransaction で捕捉できる。しかし flatpak には pacman hook 相当の
 # 宣言的フック機構が存在しない(調査済み)。そこで flatpak コマンド自体を fish の
 # function でラップし、install/uninstall の実行後に `pkgnote fetch` を呼んで KDL へ
