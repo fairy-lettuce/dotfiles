@@ -5,7 +5,7 @@
 
 ## About
 
-Managed by the "bare repository and alias method"
+Managed by [yadm](https://github.com/yadm-dev/yadm), a dotfiles manager whose usage resembles "bare repository and alias method" but more flexible for multiple machines.
 
 ## Desktop
 
@@ -15,7 +15,8 @@ Currently super WIP!
 - Terminal: [alacritty](https://github.com/alacritty/alacritty)
 - Terminal Multiplexer: [Zellij](https://github.com/zellij-org/zellij)
 - Shell: [fish](https://github.com/fish-shell/fish-shell)
-- File manager: [Thunar](https://gitlab.xfce.org/xfce/thunar)
+- File manager (GUI): [Thunar](https://gitlab.xfce.org/xfce/thunar) and [nemo](https://github.com/linuxmint/nemo)
+- File manager (CLI): [yazi](https://github.com/sxyazi/yazi)
 - Bar: [waybar](https://github.com/Alexays/Waybar)
 - App launcher: [fuzzel](https://codeberg.org/dnkl/fuzzel)
 - Greeter: [greetd](https://sr.ht/~kennylevinsen/greetd/) and [ReGreet](https://github.com/rharish101/ReGreet)
