@@ -1,0 +1,60 @@
+# C#
+[[language]]
+name = "c-sharp"
+language-servers = ["roslyn"]
+indent = { tab-width = 4, unit = "\t" }
+auto-format = true
+
+[language.debugger]
+name = "netcoredbg"
+transport = "stdio"
+command = "netcoredbg"
+args = ["--interpreter=vscode"]
+
+# launch は stdin を渡せない (netcoredbg は runInTerminal 非対応)。対話プログラムは attach で。
+[[language.debugger.templates]]
+name = "launch"
+request = "launch"
+completion = [
+  { name = "dll", completion = "filename" },
+  { name = "cwd", completion = "directory", default = "." },
+]
+args = { program = "{0}", cwd = "{1}", stopAtEntry = false, justMyCode = true }
+
+[[language.debugger.templates]]
+name = "launch (stop at entry)"
+request = "launch"
+completion = [
+  { name = "dll", completion = "filename" },
+  { name = "cwd", completion = "directory", default = "." },
+]
+args = { program = "{0}", cwd = "{1}", stopAtEntry = true, justMyCode = true }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+completion = [{ name = "pid" }]
+args = { processId = "{0}" }
+
+[language-server.roslyn]
+command = "roslyn-language-server"
+args = ["--stdio", "--autoLoadProjects", "--logLevel", "Warning"]
+
+# Rust
+[[language]]
+name = "rust"
+auto-format = true
+
+[language-server.rust-analyzer]
+config = { cargo = { features = "all" }, check = { command = "clippy" } }
+
+[language.debugger]
+name = "lldb-vscode"
+transport = "stdio"
+command = "lldb-dap"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+completion = [ { name = "binary", completion = "filename" } ]
+args = { program = "{0}", initCommands = [ "command script import /usr/local/etc/lldb_vscode_rustc_primer.py" ] }

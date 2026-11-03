@@ -1,0 +1,24 @@
+theme = "shakimofu"
+
+[editor]
+line-number = "relative"
+mouse = true
+auto-info = true
+color-modes = true
+true-color = true
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+
+[editor.lsp]
+display-inlay-hints = true
+display-messages = true
+display-progress-messages = true
+
+[editor.file-picker]
+hidden = false
+
+[editor.statusline]
+right = ["diagnostics", "selections", "position", "file-encoding"]
