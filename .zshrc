@@ -16,8 +16,9 @@ bindkey "${terminfo[kbs]}"  backward-delete-char
 bindkey -M viins "${terminfo[kdch1]}" delete-char
 bindkey -M vicmd "${terminfo[kdch1]}" delete-char
 
-# dotfiles
-alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+# dotfiles (yadm; the repository stays at ~/.dotfiles)
+alias yadm='command yadm --yadm-repo $HOME/.dotfiles'
+alias dotfiles='command yadm --yadm-repo $HOME/.dotfiles'
 
 # start lgx2userspace (capture board)
 alias lgx2='/usr/bin/lgx2userspace -d /dev/video99'

@@ -18,7 +18,9 @@ if status is-interactive
     command -q starship; and starship init fish | source
 
     # aliases / abbreviations
-    alias dotfiles '/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+    # dotfiles (yadm; the repository stays at ~/.dotfiles)
+    alias yadm 'command yadm --yadm-repo $HOME/.dotfiles'
+    alias dotfiles 'command yadm --yadm-repo $HOME/.dotfiles'
 
     # helix alias
     alias hx helix
