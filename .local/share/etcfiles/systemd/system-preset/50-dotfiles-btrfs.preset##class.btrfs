@@ -1,0 +1,5 @@
+# Deployed to /etc/systemd/system-preset/ by etcfiles (btrfs machines only).
+# Applied by deploy-dotfiles.sh with `systemctl preset --preset-mode=enable-only`
+# for the units listed here only (never preset-all).
+enable snapper-timeline.timer
+enable snapper-cleanup.timer

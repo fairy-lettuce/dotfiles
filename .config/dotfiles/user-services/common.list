@@ -1,0 +1,9 @@
+# User units enabled by deploy-dotfiles.sh (systemctl --user enable).
+# Same syntax as systemd preset files: "enable <unit>" per line.
+# Per-machine lists: add "<name>.list##class.<class>" (yadm alternates).
+enable waybar.service
+enable awww-daemon.service
+enable wallpaper-random.timer
+# start PipeWire at login instead of on first use (avoids delaying the first sound)
+enable pipewire.service
+enable pipewire-pulse.service

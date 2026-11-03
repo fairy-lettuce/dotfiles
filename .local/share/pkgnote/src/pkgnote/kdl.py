@@ -9,12 +9,16 @@
   はキーやノード名までクオートしてしまう)。
 - ``dump()`` はコメントも失う。
 
-pkgnote が扱う木は「カテゴリ名 / ``package`` / ``installed_on`` / ``machine``」の
-ノードと、文字列・真偽値・null の値だけという限定された構造なので、SPEC のスタイルを
+pkgnote が扱う木は「カテゴリ名 / ``package``」のノードと、文字列・真偽値・null の
+値だけという限定された構造なので、SPEC のスタイルを
 決定論的に出力する自前エミッタは小さく書けて、かつ git 差分が安定する。
 
-トレードオフ: 機械が書き換えるファイル(packages.kdl / machine_*.kdl)では
+トレードオフ: 機械が書き換えるファイル(packages.kdl)では
 ユーザーの任意コメントは round-trip されない。ファイル先頭の生成ヘッダのみ扱う。
+(TODO: コメントの round-trip 保持。退避先は ``~/.pacman/packages-comments.md``)
+
+書き込みは同じディレクトリの一時ファイルに書いてから rename する(原子的置換)。
+fetch が途中で落ちても packages.kdl が半端な内容にならないようにするため。
 """
 
 from __future__ import annotations
@@ -24,12 +28,14 @@ from dataclasses import dataclass, field
 
 import ckdl
 
+from .errors import PkgnoteError
+
 # KDL のスカラー値。pkgnote では実質 str / bool / None のみを使う。
 Scalar = str | bool | int | float | None
 
 # パッケージ/カテゴリノードのプロパティを出力する際の正準順序。
 # ここに無いキーは末尾にアルファベット順で続ける(将来の拡張に備える)。
-_PROP_ORDER = ("from", "alias", "first_installed_on", "include")
+_PROP_ORDER = ("from", "alias", "install-if", "skip-if", "first-installed-on")
 
 # 裸で出力してよい識別子(ノード名・プロパティキー)の保守的なパターン。
 # これに合致しないものはクオートする。KDL2 では true/false/null 等は要 ``#`` だが
@@ -37,7 +43,7 @@ _PROP_ORDER = ("from", "alias", "first_installed_on", "include")
 _BARE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_+.\-]*$")
 
 
-class KdlError(Exception):
+class KdlError(PkgnoteError):
     """KDL の読み込み失敗。CLI 層でトレースバック無しに表示するための例外。
 
     ckdl の ``ParseError`` は位置情報を持たない(メッセージ文字列だけ)ので、
@@ -52,10 +58,10 @@ class KNode:
     name: str
     args: list[Scalar] = field(default_factory=list)
     props: dict[str, Scalar] = field(default_factory=dict)
-    children: list["KNode"] = field(default_factory=list)
+    children: list[KNode] = field(default_factory=list)
 
     @classmethod
-    def from_ckdl(cls, node) -> "KNode":
+    def from_ckdl(cls, node) -> KNode:
         return cls(
             name=node.name,
             args=list(node.args),
@@ -75,20 +81,20 @@ class KNode:
             return str(self.args[0])
         return None
 
-    def child_categories(self) -> list["KNode"]:
-        """カテゴリ子ノード(``package``/``installed_on`` 以外)。"""
-        return [c for c in self.children if c.name not in ("package", "installed_on")]
+    def child_categories(self) -> list[KNode]:
+        """カテゴリ子ノード(``package`` 以外)。"""
+        return [c for c in self.children if c.name != "package"]
 
-    def child_packages(self) -> list["KNode"]:
+    def child_packages(self) -> list[KNode]:
         return [c for c in self.children if c.name == "package"]
 
-    def find_category(self, name: str) -> "KNode | None":
+    def find_category(self, name: str) -> KNode | None:
         for c in self.children:
-            if c.name == name and c.name not in ("package", "installed_on"):
+            if c.name == name and c.name != "package":
                 return c
         return None
 
-    def find_package(self, pkg_name: str) -> "KNode | None":
+    def find_package(self, pkg_name: str) -> KNode | None:
         for c in self.children:
             if c.name == "package" and c.pkg_name == pkg_name:
                 return c
@@ -278,6 +284,25 @@ def dumps(nodes: list[KNode], header: str | None = None) -> str:
 
 
 def dump_file(path, nodes: list[KNode], header: str | None = None) -> None:
+    write_text_atomic(path, dumps(nodes, header=header))
+
+
+def write_text_atomic(path, text: str) -> None:
+    """一時ファイル + rename で原子的に書き込む(パーミッションは既存ファイルに揃える)。"""
+    import os
+    import tempfile
     from pathlib import Path
 
-    Path(path).write_text(dumps(nodes, header=header), encoding="utf-8")
+    p = Path(path)
+    fd, tmp = tempfile.mkstemp(prefix=f".{p.name}.", suffix=".tmp", dir=p.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        if p.exists():
+            os.chmod(tmp, p.stat().st_mode & 0o7777)
+        else:
+            os.chmod(tmp, 0o644)
+        os.replace(tmp, p)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise

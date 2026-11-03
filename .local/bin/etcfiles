@@ -10,9 +10,19 @@
 # deploy uses sudo cp (file ends up root-owned with source permissions),
 # fetch copies as the current user. For the typical 644/root:root configs
 # this is fine, but may need attention for restrictive files (e.g. 0600).
+#
+# Per-machine files use yadm alternates: "foo##hostname.ruan" etc. are never
+# deployed/fetched themselves; the "foo" symlink yadm creates for the selected
+# alternate is followed instead (no symlink -> nothing for this machine).
+#
+# ETCFILES_DIR, ETCFILES_ROOT (default /) and ETCFILES_TTY (default /dev/tty)
+# can be overridden for tests.
 set -euo pipefail
 
-ETCFILES_DIR="$HOME/.local/share/etcfiles"
+ETCFILES_DIR="${ETCFILES_DIR:-$HOME/.local/share/etcfiles}"
+ETCFILES_ROOT="${ETCFILES_ROOT:-/}"
+ETCFILES_ROOT="${ETCFILES_ROOT%/}"
+ETCFILES_TTY="${ETCFILES_TTY:-/dev/tty}"
 DRY_RUN=false
 
 usage() {
@@ -57,9 +67,11 @@ show_diff() {
     fi
 }
 
-# Collect all tracked files (relative paths under etcfiles dir)
+# Collect all tracked files (relative paths under etcfiles dir).
+# -xtype f: regular files and symlinks to them (selected yadm alternates);
+# alternate sources (anything with "##" in its path) are skipped.
 collect_files() {
-    find "$ETCFILES_DIR" -type f -not -name '*.bak.*' -printf '%P\n' | sort
+    find "$ETCFILES_DIR" -xtype f -not -name '*.bak.*' -not -path '*##*' -printf '%P\n' | sort
 }
 
 deploy() {
@@ -76,14 +88,14 @@ deploy() {
 
     while IFS= read -r relpath; do
         local src="$ETCFILES_DIR/$relpath"
-        local dst="/etc/$relpath"
+        local dst="$ETCFILES_ROOT/etc/$relpath"
 
         if [[ ! -e "$dst" ]]; then
             echo "[NEW] /etc/$relpath"
             show_diff /dev/null "$src"
             missing=$((missing + 1))
             if [[ "$DRY_RUN" == false ]]; then
-                read -rp "  Create this file? [y/N] " answer < /dev/tty
+                read -rp "  Create this file? [y/N] " answer < "$ETCFILES_TTY"
                 if [[ "$answer" =~ ^[Yy]$ ]]; then
                     sudo mkdir -p "$(dirname "$dst")"
                     sudo cp "$src" "$dst"
@@ -107,7 +119,7 @@ deploy() {
         changed=$((changed + 1))
 
         if [[ "$DRY_RUN" == false ]]; then
-            read -rp "  Apply this change? [y/N] " answer < /dev/tty
+            read -rp "  Apply this change? [y/N] " answer < "$ETCFILES_TTY"
             if [[ "$answer" =~ ^[Yy]$ ]]; then
                 local ts
                 ts=$(date +%Y%m%d%H%M%S)
@@ -137,7 +149,7 @@ fetch() {
     local missing=0
 
     while IFS= read -r relpath; do
-        local src="/etc/$relpath"
+        local src="$ETCFILES_ROOT/etc/$relpath"
         local dst="$ETCFILES_DIR/$relpath"
 
         if [[ ! -e "$src" ]]; then
@@ -156,7 +168,7 @@ fetch() {
         changed=$((changed + 1))
 
         if [[ "$DRY_RUN" == false ]]; then
-            read -rp "  Fetch this change? [y/N] " answer < /dev/tty
+            read -rp "  Fetch this change? [y/N] " answer < "$ETCFILES_TTY"
             if [[ "$answer" =~ ^[Yy]$ ]]; then
                 mkdir -p "$(dirname "$dst")"
                 sudo cat "$src" | tee "$dst" > /dev/null

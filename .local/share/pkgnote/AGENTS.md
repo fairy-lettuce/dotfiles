@@ -1,31 +1,29 @@
 # pkgnote
 
-パッケージの導入理由・カテゴリ・マシンごとの要否を KDL で管理する個人用ツール。
+パッケージの導入理由・カテゴリ・マシンごとの導入条件を KDL で管理する個人用ツール。
 
 仕様の詳細は `SPEC.md` を必ず読むこと。特に「配置・運用」セクションは実装前に必ず守ること
-(`~/src/` への依存禁止、ネストした git リポジトリを作らない、`uv init --no-git` を使うこと)。
+(`~/src/` への依存禁止、ネストした git リポジトリを作らない)。
 
-設計相談の経緯(なぜこの構造になったか、検討して却下した案)は
-`~/src/misc/20260720-dotfiles-package-kdl-design/design.md` にある。判断に迷ったらそちらも参照する。
+初期の設計相談の経緯は `~/src/misc/20260720-dotfiles-package-kdl-design/design.md` にある
+(マシンごとの要否の表現はその後、条件式方式に変えた。SPEC.md「旧方式からの変更」参照)。
 
 ## 開発方針
 
 個人用ツール。OSS としてのメンテナンスは考えず、自分が使いやすいように作る。
 
-## 最初にやること
+## 実装・運用メモ
 
-1. `~/.local/share/pkgnote` で `uv init --no-git` してプロジェクトを初期化する
-   (`--no-git` を忘れると dotfiles bare repo の work-tree 内にネストした git リポジトリができるので注意)。
-2. `uv add ckdl` で KDL パーサを追加する。
-3. dotfiles 全体の `.gitignore`(`~/.gitignore`)に `.venv/`/`__pycache__/` 等が含まれているか確認し、
-   無ければ追加する。
-4. データモデルを実装する: `packages.kdl`/`machine_$HOSTNAME.kdl` を読み込み、木構造として扱えるように
-   パースする層。
-5. DFS 解決ロジックを実装する: あるマシンについて、packages.kdl 上の各パッケージが最終的に
-   include=#true/#false のどちらと評価されるかを算出する関数(SPEC.md の「優先順位ルール」参照)。
-   `uncategorized` は特殊ルール(`installed_on` で判定)なので忘れないこと。
-6. 上記ができたら、まず読み取り専用の `pkgnote status`(ドリフト検知、書き込みなし)から作る。
-   実システムに影響を与えないので安全にテストできる。`deploy`/`fetch`/`compress`/`categorize` は
-   その後、SPEC.md の記述に沿って順に実装する。
-7. `~/.local/bin/pkgnote` に、`uv run --project ~/.local/share/pkgnote pkgnote "$@"` を呼ぶだけの
-   薄いシムスクリプトを手書きで置く(`uv tool install` の自動生成には頼らない。理由は SPEC.md 参照)。
+- `~/.local/share/pkgnote` に `.git` を作らない(`uv init` するなら `--no-git`)。dotfiles は yadm
+  (`yadm --yadm-repo ~/.dotfiles ...`)が一元管理している。
+- `~/.local/bin/pkgnote` は `uv run --project ~/.local/share/pkgnote pkgnote "$@"` を呼ぶだけの手書きシム。
+- マシンごとの導入可否は `packages.kdl` の `install-if` / `skip-if` 条件だけで決まる(SPEC.md
+  「条件式」)。カテゴリは説明のみ。旧 `machine_*.kdl` / `installed_on` / `compress` は廃止済み。
+- `pkgnote fetch` は(hook を root 所有パスへ移して再有効化した後は)pacman hook からいつでも
+  走りうる。データ不整合・インストール済み一覧の取得失敗のときは書かずに失敗する、大量の
+  アンインストール記録は止める、書き込みは原子的置換、という性質を壊さないこと。
+- インストール済み一覧は `pacman -Qqen` / `-Qqem` / `flatpak list` を直接問い合わせる
+  (旧 `pkglist_*.txt` は廃止)。
+- パッケージの導入・削除や `sudo` を伴うコマンドを試すときは `deploy --dry-run` を使う。テストでは
+  backend をモックする(`tests/conftest.py`)。
+- テスト: `uv run pytest`。

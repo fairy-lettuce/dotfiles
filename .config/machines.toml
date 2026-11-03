@@ -1,21 +1,23 @@
 # List of machines using this dotfiles
+# Every value (and every list element) is used verbatim as a yadm class / pkgnote condition name; "none" = no class.
+# This file is PUBLIC: don't put disk unlock methods or key management details here.
 
 [ruan]
 form = "desktop"
-cpu = "intel"
-gpu = "nvidia"
+cpu = "intel-cpu"
+gpu = "nvidia-gpu"
 bootloader = "grub"
 filesystem = "ext4"
-encryption = false
-secureboot = false
+encryption = "none"
+secureboot = "none"
 roles = ["personal", "gaming", "dualboot"]
 
 [tribios]
 form = "laptop"
-cpu = "intel"
-gpu = "intel"
+cpu = "intel-cpu"
+gpu = "intel-gpu"
 bootloader = "systemd-boot"
 filesystem = "btrfs"
-encryption = true
-secureboot = true
+encryption = "luks"
+secureboot = "secureboot"
 roles = ["work", "touch"]

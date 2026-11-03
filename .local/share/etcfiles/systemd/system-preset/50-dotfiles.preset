@@ -1,0 +1,9 @@
+# Deployed to /etc/systemd/system-preset/ by etcfiles.
+# Applied by deploy-dotfiles.sh with `systemctl preset --preset-mode=enable-only`
+# for the units listed here only (never preset-all).
+enable NetworkManager.service
+enable bluetooth.service
+enable firewalld.service
+enable greetd.service
+enable sshd.service
+enable tailscaled.service

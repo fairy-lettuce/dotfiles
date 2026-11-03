@@ -1,0 +1,7 @@
+// Default colors used by generate-color-scheme.sh when no wallpaper is given,
+// or when the wallpapers repo (or its colors.kdl) has no color for it.
+// Same format as colors.kdl in the wallpapers repo.
+color "_default" {
+    primary "#ecbe7f"
+    secondary "#e89f71"
+}

@@ -1,8 +1,9 @@
 # pkgnote — 仕様書
 
-パッケージの導入理由・カテゴリ・マシンごとの要否を KDL で管理する個人用ツール。
-設計相談の経緯は `~/src/misc/20260720-dotfiles-package-kdl-design/design.md` にある
-(このファイルはそこからの引き継ぎ + 実装時の配置・運用に関する追加の注意点をまとめたもの)。
+パッケージの導入理由・カテゴリ・マシンごとの導入条件を KDL で管理する個人用ツール。
+初期設計の経緯は `~/src/misc/20260720-dotfiles-package-kdl-design/design.md` にある
+(ただしマシンごとの要否の表現は、そこで決めた `machine_*.kdl` の include ツリー方式から、
+`packages.kdl` 上の条件式方式に 2026-10 に作り直した。下記「旧方式からの変更」参照)。
 
 ## 開発方針
 
@@ -13,22 +14,22 @@
 ## 配置・運用(実装前に必ず守ること)
 
 - **本体は `~/.local/share/pkgnote/` に置く。`~/src/pkgnote` のような dotfiles 管理外のディレクトリに
-  依存させてはいけない。** dotfiles は bare repo(`~/.dotfiles`, work-tree は `$HOME`)で複数マシンに
-  展開されるため、`~/src/` 配下は各マシンで別途 clone しないと存在せず、ポータビリティが壊れる。
-- **`~/.local/share/pkgnote/` に独立した git リポジトリ(`.git`)を作ってはいけない。** dotfiles bare
-  repo の work-tree 内にネストした git リポジトリを作ると、gitlink 化・無視など事故りやすい状態になる。
+  依存させてはいけない。** dotfiles は yadm(リポジトリは `~/.dotfiles`、work-tree は `$HOME`)で
+  複数マシンに展開されるため、`~/src/` 配下は各マシンで別途 clone しないと存在せず、ポータビリティが
+  壊れる。yadm は常に `yadm --yadm-repo ~/.dotfiles ...` で呼ぶ(ラッパーは無い)。
+- **`~/.local/share/pkgnote/` に独立した git リポジトリ(`.git`)を作ってはいけない。** dotfiles の
+  work-tree 内にネストした git リポジトリを作ると、gitlink 化・無視など事故りやすい状態になる。
   `uv init` はデフォルトで `git init` を実行することがあるため、**`uv init --no-git`(または相当の
   オプション)を明示的に使うこと。**
-  既存の `.pacman/` や `.local/bin/etcfiles` も同様に、独立リポジトリではなく dotfiles bare repo が
-  一元管理している。それに揃える。
+  既存の `.pacman/` や `.local/bin/etcfiles` も同様に、独立リポジトリではなく dotfiles が一元管理している。
 - **`~/.local/bin/pkgnote` は本体を呼ぶだけの薄いシムにする。**
   `uv run --project ~/.local/share/pkgnote pkgnote "$@"` のような数行のシムを **手書きして** dotfiles
   管理下に置く。`uv tool install` が自動生成するシムは venv への絶対パスを shebang に埋め込むため、
   git 管理して複数マシンにポータブルに展開する用途には向かない(生成する人のマシン・ユーザー名に紐づく)。
   ただし配置構造の考え方自体(本体は `.local/share/<name>/`、エントリーポイントだけ `.local/bin/`)は
   `uv tool install`/`pipx` のデフォルト挙動そのものを踏襲している。
-- 実装開始時に、dotfiles 全体の `.gitignore` に `.venv/`/`__pycache__/` 等 Python プロジェクトの典型的な
-  除外パターンが含まれているか確認すること。
+- dotfiles 全体の `.gitignore` に `.venv/`/`__pycache__/` 等 Python プロジェクトの典型的な除外パターンが
+  含まれていること。
 - コマンド名の候補として `pacmeta` を検討したが、pacdef の後継ツール `metapac` と紛らわしいため却下し
   `pkgnote` にした。`pac` 始まりは pacman 専用ツールに見えて誤解を招く(pacman 以外に foreign/flatpak、
   将来的には winget/scoop も扱う multi-backend 想定のため)。
@@ -36,237 +37,227 @@
 ## 前提・言語選定
 
 - フォーマットは KDL。KDL には配列リテラルがなく、プロパティ値はスカラー(文字列/数値/真偽値/null)のみ。
-  複数値は子ノードとして表現する。
 - KDL v2 では真偽値リテラルは `#true`/`#false`/`#null`(v1 の裸の `true`/`false`/`null` ではない)。
 - **KDL パーサは `ckdl` を採用。** KDL 1.0/2.0 両対応かつ upstream テストスイート通過で、PyPI に
-  正式リリースされている。対抗馬だった `tabatkins/kdlpy` は KDL 2.0 対応が GitHub の main ブランチのみで
-  PyPI 未公開のため見送った。自前パーサ実装は不要。
-- Python 環境は `uv` を使う(グローバル方針)。
+  正式リリースされている。書き戻しは自前の正準シリアライザ(下記「書き戻し」)。
+- Python 環境は `uv` を使う(グローバル方針)。テストは `uv run pytest`。
+- 名前(ノード名・プロパティ名)はすべて kebab-case。
 
-## packages.kdl — パッケージの分類マスタ
+## packages.kdl — パッケージの分類マスタ兼導入条件
 
-配置: `~/.pacman/packages.kdl`
+配置: `~/.pacman/packages.kdl`(全マシン共通の 1 ファイル)
 
 トップレベルのラッパーノードは置かない(KDL はマルチルートを許すため意味がない)。
-カテゴリは「用途」基準。`tool` のみ `cli`/`gui` の操作インターフェース軸を通し、他のカテゴリ
-(`dev`/`creative` 等)は用途分野の中で必要に応じて `cli`/`gui` サブカテゴリを持つ(全カテゴリに強制しない)。
+カテゴリは「用途」基準で、**「なぜ入れたか」の説明でしかない**。どのマシンに入れるかは
+下記の条件式だけで決まり、カテゴリに属すること(`uncategorized` であることを含む)自体は判定に
+影響しない。カテゴリの切り方は、`tool` のみ `cli`/`gui` の操作インターフェース軸を通し、他
+(`dev`/`creative` 等)は用途分野の中で必要に応じて `cli`/`gui` サブカテゴリを持つ。
 
 ```kdl
 system {
     package "bluez" from="pacman"
-    package "adobe-source-han-sans-jp-fonts" from="pacman"
+    boot {
+        package "grub" from="pacman" install-if="grub"
+    }
 }
 
-tool {
-    cli {
-        terminal {
-            package "alacritty" from="pacman"
-            package "zellij" from="pacman"
-        }
-    }
-    gui {
-        browser {
-            package "brave-bin" from="foreign"
-        }
-    }
+game install-if="gaming" {
+    package "steam" from="pacman"
+    package "gamescope" from="pacman" skip-if="laptop"
 }
 
 dev {
-    c-sharp {
-        package "dotnet-sdk-10.0" from="pacman"
-    }
     gui {
         package "com.visualstudio.code" from="flatpak" alias="vscode"
     }
 }
 
 uncategorized {
-    package "some-new-tool" from="pacman" first_installed_on="ruan" {
-        installed_on "ruan"
-    }
+    package "some-new-tool" from="pacman" install-if="ruan" first-installed-on="ruan"
 }
 ```
 
 - `from` は `"pacman"` / `"foreign"`(AUR 等) / `"flatpak"`。将来 `"winget"`/`"scoop"` を追加する余地を
-  残す(下記「将来の拡張」参照)。値は必ずクオートする。
-- flatpak は package 名(第一引数)に ID をそのまま使う。理由: flatpak の `exports/bin` は ID そのままの
-  名前でコマンドがエクスポートされる仕様で、「実行時に叩く識別子」で出典間の意味を統一すると自然に ID に
-  なる。可読性は `alias` プロパティで補う。`alias` は flatpak 専用ではなく pacman/foreign でも自由に
-  使ってよい。
-- `uncategorized/<name>` は fetch が自動追加する未分類の一時置き場。
-  - `first_installed_on="<machine>"`(property, 単一・不変): 最初に検出されたマシン名の記録。
-  - `installed_on`(child node, 複数可): 現在実際にインストールされているマシンの集合。KDL の
-    プロパティは配列を持てないため、複数マシンに広がった場合はこの子ノードを追加していく。
-  - deploy 時はこのカテゴリだけ特殊扱いで machine_*.kdl を見ず、`installed_on` にそのマシン名がある
-    場合のみ include する。カテゴリ移動後もこれらのプロパティ/ノードは残してよい(uncategorized 配下
-    でのみ参照される、それ以外では無視される inert な情報として扱う)。
+  残す。値は必ずクオートする。
+- flatpak は package 名(第一引数)に ID をそのまま使う(flatpak の `exports/bin` は ID そのままの名前で
+  コマンドをエクスポートするため、「実行時に叩く識別子」で統一すると ID になる)。可読性は `alias` で
+  補う。`alias` は pacman/foreign でも自由に使ってよい。
+- `first-installed-on="<machine>"`: 最初に検出されたマシンの記録(履歴。判定には使わない)。
+- `uncategorized` は fetch が新規パッケージを入れる一時置き場。`pkgnote categorize` で正式カテゴリへ移す。
 
-## machine_$HOSTNAME.kdl — マシンごとの導入意図 (deploy 型)
+### 条件式(`install-if` / `skip-if`)
 
-配置: `~/.pacman/machine_$HOSTNAME.kdl`(マシンごとに別ファイル)
+package にもカテゴリにも `install-if="<式>"` / `skip-if="<式>"` を書ける。
 
-各パッケージにマシンリストを持たせる方式ではなく、マシン側が「有効にするカテゴリ」を選ぶ方式。
-開発専用マシンは `creative` を、WM 不要なサーバは `gui` 系を丸ごと外す、といった同期が容易になる。
+- 文法: 名前、`&`(AND)、`|`(OR)、`!`(NOT)、括弧。優先順位は `!` > `&` > `|`。空白は無視。
+  **AND は必ず `&` で書く**(名前の並置 `a b` は構文エラー)。手書きの再帰下降パーサで、エラーは
+  ファイル名・ノードパス・位置(`^`)付きで出す。
+- 合成: 根 → package のパス上の条件をすべて合成する。
+  - 実効 install = パス上の全 `install-if` の AND(1 つも無ければ真)
+  - 実効 skip = パス上の全 `skip-if` の OR(1 つも無ければ偽)
+  - 入れる ⇔ 実効 install かつ not 実効 skip。**条件がどこにも無ければ全マシンに入る。**
+    skip が真なら install-if に関係なく入らない。
+- 使える名前: マシンの論理名と、マシン属性の値(クラス名。次節)。どのマシンの論理名でも
+  クラス名でもない名前は **警告**(エラーではない。将来の属性を先回りして書けるように)。
 
-### ファイル分割
+### マシン属性 — `~/.config/machines.toml`
 
-マシンごとに別ファイル `machine_$HOSTNAME.kdl` に分割する(単一ファイルに全マシン分の
-`machine "hostname" { }` ブロックを並べる案もあったが撤回)。理由:
-
-- bare repo は全マシンで同じパスを共有するため、単一ファイルだと複数マシンからの非同期な fetch が
-  同じファイルへの書き込みとして衝突しやすい。マシンごとに別ファイルにすれば、各マシンは自分のファイル
-  しか触らないので git 上の衝突が構造的に起きにくい。
-- 既存の `pkglist_$HOSTNAME.txt` という命名パターンとも一貫性がある。
-
-ホスト名が将来的に重複・変更するケースに備えて、`$HOSTNAME`(物理ホスト名)とファイル/ノードで使う
-論理識別子を分離できるよう、`~/.pacman/host-alias.kdl` のような小さな対応表(物理 `$HOSTNAME` →
-論理名)を持たせる案がある(詳細は実装時に詰める)。
-
-木構造は packages.kdl のカテゴリツリーをそのまま反映する形でネストし、属性は `include` に統一する
-(`installed` という別名は設けない。理由は後述)。
-
-```kdl
-// machine_ruan.kdl
-machine "ruan" {
-    system include=#true {
-        package "bluez" include=#true
-    }
-
-    tool include=#true
-
-    dev include=#true {
-        gui include=#false {
-            package "com.visualstudio.code" include=#true
-        }
-    }
-
-    creative include=#false
-}
+```toml
+[ruan]
+form = "desktop"
+cpu = "intel-cpu"
+gpu = "nvidia-gpu"            # ハイブリッドなら ["intel-gpu", "nvidia-gpu"]
+bootloader = "grub"
+filesystem = "ext4"
+encryption = "none"
+secureboot = "none"
+roles = ["personal", "gaming", "dualboot"]
 ```
 
-### 優先順位ルール
+テーブルキーがマシンの論理名。クラス名の規則(`src/pkgnote/machines.py` にだけ書く):
 
-- 最も近い祖先(自ノード含む)の明示的な `include` 値が勝つ。DFS で「自分に明示指定があれば採用、なければ
-  親を見に行く」。
-- 判定は「根から対象パッケージまでのパス上に、どこか一箇所でも `include` の明示があるか」で行う。
-  途中の中間ノード(`dev` や `gui` など)は省略してよく、より深い場所(個別 package ノードなど)にだけ
-  明示があれば、それだけで十分に有効な指定として扱う。パス上のどこにも明示が一つも無い場合にのみ
-  エラーにする。
-- ネストによる木構造の specificity で優先順位を表現するので、フラットな `include "a/b/c"` /
-  `exclude "a/b/c"` のようなパス文字列 + 宣言順ルールは採用しない。パス文字列方式は宣言順を人間が守ら
-  ないと事故るが、木構造なら「より深くネストしている方が具体的」という構造上の制約で担保される。
-  副産物として、parser が packages.kdl と machine_*.kdl の木を同時に辿れるので、存在しないカテゴリ名の
-  検証もついてくる。
-- KDL の文法にパス圧縮記法(`a/b/c { }` のような中間ノード省略)は存在しない。全階層を明示的にネストする。
-- KDL の property 構文はキー必須・値必須(`prop := string '=' value`)で、値省略のショートハンドはできない。
-  「true の場合は書かなくてよい」ショートハンドは検討したが、冗長性の解消は木の圧縮コマンドに任せる方針
-  とし、`include=` は常に明示する形のままにした。
+- キーはラベルにすぎない。文字列の値と、文字列の配列の各要素が、**そのまま**クラス名になる
+  (接尾辞などの変換はしない。`cpu = "intel-cpu"` → `intel-cpu`)。どのキーも文字列か文字列の配列を取れる
+- 例外として値 `"none"` はクラスを出さない(`encryption = "none"` のように「ない」ことを書く)
+- 真偽値・数値・入れ子のテーブル・空文字列はエラー。1 マシンの中で同じクラスが 2 回出てくるのもエラー
+- 論理名とクラス名はホスト名のラベルの規則(RFC 1123): 英数字と `-`、先頭・末尾は `-` 不可、1〜63 文字(`_` は不可)。
+  クラス名が他のマシンの論理名と同じでもよい。条件式の名前の文法はこれより広い(実在しない名前は警告)
+- 値の許可リストは持たない(未知の値もそのまま名前になる)
+- machines.toml は公開される。ディスクの解除方法(TPM2 / パスフレーズ / FIDO2)や鍵の管理は書かない
 
-### installed と include を分けない理由
+形式の検査は読み込み時に全マシンに対して行う(どれか 1 台でも不正なら全コマンドがエラー)。
+マシンの追加・更新はデプロイ用のスクリプト側(`~/.local/share/deploy-dotfiles/machine-init.py`)が行う。
 
-当初「fetch が書く観測事実(installed)」と「deploy 用の意図(include)」を別属性にする案を検討したが、
-machine_*.kdl 自体が「そのマシンにインストールされているべきという意図の表現」だと捉えれば、
-fetch/deploy どちらの方向であっても書き込む値の意味は同じであり、属性を分ける理由がない。分けたところで、
-木の圧縮操作が持つ危険性(下記)は属性名によらず存在するため、分離では解決しない。
+`pkgnote machine classes [--machine X]` が 1 行 1 つで出力する。セットアップスクリプトはこれを
+yadm の `local.class` に流し込めばよい(規則を二重に持たない)。
 
-### fetch(実システム→ KDL への取り込み)
+現在のマシンの論理名は yadm の `local.hostname`(`git config -f ~/.dotfiles/config local.hostname`)。
+未設定ならエラー(設定方法を案内する)。全コマンドで `--machine <name>` で上書きできる。
+machines.toml に無いマシンを対象にするとエラー(条件を誤評価して書き込まないため)。
 
-用語: `etcfiles` の `deploy`(管理ファイル→実システム)/`fetch`(実システム→管理ファイル)という
-既存の命名に揃え、`pull`/`push` ではなく **`fetch`/`deploy`** を使う
-(`etcfiles` の `fetch` のヘルプ文言 "pull in changes made directly in /etc" で "pull" が
-今回と逆方向の意味で既に使われており、`pull`/`push` のままでは混乱するため)。
+## コマンド
 
-- pacman/yay/flatpak の install/remove 実行時に hook で捕捉。
-- **明示的インストールのみを拾う判定方法**: pacman hook のトランザクション情報(`%TARGETS%`)から
-  依存関係を判別しようとはせず、「packages.kdl/machine_*.kdl から算出できるあるべきパッケージ一覧
-  (ソート済み)」と「既存の `pkglist_$HOSTNAME.txt`/`pkglist_foreign_$HOSTNAME.txt` の内容(こちらも
-  `pacman -Qqen`/`-Qqem` の生出力で明示的インストールのみ)」を diff して判定する。依存関係で入った
-  パッケージはそもそもこの txt に出てこないので、この方式なら自然に除外される。
-  - 副産物: この diff で「KDL にはあるが実機に無い」パッケージも同時に検出できるので、fetch 実行時に
-    「deploy した方がいいかも」という軽い忠告を出せる(ドリフト検知を兼ねる)。
-- インストール: packages.kdl に該当パッケージが未登録なら `uncategorized/<name>` に
-  `first_installed_on="<machine>"` + `installed_on "<machine>"` 付きで追加。machine_*.kdl 側は、
-  そのパッケージが属するカテゴリパスの最深部(package ノードそのもの)に `include=#true` を書き込む。
-  これによりカテゴリレベルの `include=#false` より個別指定が優先される(= fetch が正典)。
-- アンインストール: 該当 package ノードに `include=#false` を明示する。ノードを削除してはいけない
-  (削除すると「明示なし」に戻り、祖先が `#true` なら継承されてインストールされたまま扱いに逆戻りして
-  しまうため)。
-- flatpak には pacman hook 相当の宣言的フック機構が存在しない(調査済み)。代わりに `flatpak` コマンド
-  自体を fish の shell function でラップし、install/uninstall 実行後に fetch 相当の処理を呼ぶ方式を
-  採る。**実装時、`.local/bin` 配下のスクリプト群にこの方式を選んだ理由をコメントで残しておくこと。**
+### fetch(実システム → KDL への取り込み)
 
-### deploy(KDL の意図→実システムへの反映)
+用語は `etcfiles` の `deploy`(管理ファイル→実システム)/`fetch`(実システム→管理ファイル)に揃える。
 
-packages.kdl と machine_$HOSTNAME.kdl(自マシン分)の両方を DFS で降りて、そのマシンで最終的に
-include=#true と評価されるパッケージ一覧を抽出し、一括インストールする。`uncategorized` は上記の
-特殊ルールで判定する。AUR ヘルパーは **yay** を使う。
+- pacman hook(`~/.pacman/pkgnote-fetch.hook`。**現在は無効**、下記「hook」参照)と flatpak ラッパー
+  (`~/.config/fish/functions/flatpak.fish`。flatpak には宣言的 hook 機構が無いため)から呼ばれる想定。
+  手動実行も可。対象は常に現在のマシンで、`--machine` は現在のマシン名と一致する場合のみ受け付ける
+  (このシステムの状態を別マシンの名義で記録しないため。deploy も同様)。
+- 明示インストールの判定は、その場で `pacman -Qqen`(公式)/ `pacman -Qqem`(AUR 等)/
+  `flatpak list --app` を問い合わせる(root 不要)。依存で入ったパッケージは `-e` で除外される。
+  問い合わせの **失敗は空集合と区別** し、1 つでも失敗したら何も書かず(観測集合も更新せず)に終了する。
+- 「インストールした / アンインストールした」は、前回 fetch 時の観測集合
+  (`~/.local/state/pkgnote/installed_<machine>.txt`、マシンローカル・dotfiles 管理外)との差分で判定する。
+  手で条件を書き換えた直後(まだ deploy・削除していない)のパッケージを fetch が勝手に「実機に合わせて」
+  書き戻さないため。観測集合が無い・空の初回は未登録パッケージの追加だけ行う(空集合は保存しない)。
+- 反映ルール(ノードは決して削除しない):
+  - 未登録のパッケージ → `uncategorized` に `install-if="<machine>"` + `first-installed-on="<machine>"`。
+  - インストールされたが条件上は入らない:
+    - package 自身の `install-if` が偽 → `" | <machine>"` を追記。
+    - package 自身の `skip-if` が真 → OR 項からマシン名を除く(空になれば `skip-if` ごと消す)。それでも
+      真(`desktop` 等のクラスで当たっている)なら `(<残り>) & !<machine>` に書き換える。
+    - **カテゴリ側の条件で除外されている場合**(祖先の `install-if` が偽、または `skip-if` が真)は、
+      package 側の条件では覆せない(install は AND、skip は OR で合成されるので、package に何を書いても
+      結果は偽のまま)。黙って無意味な書き込みをするより、**何も書かずに警告**し、package を別カテゴリへ
+      移すかカテゴリの条件を見直すよう促す。`pkgnote status` でも理由付きの EXTRA として出続ける。
+      (package 側にカテゴリ条件を上書きする仕組みを足す案もあるが、「カテゴリ条件は配下すべてに効く」と
+      いう読みやすさを崩すので採らない。)
+  - アンインストールされたが条件上は入る → package 自身の `skip-if` に `" | <machine>"` を追記(無ければ作る)。
+    一度に 5 件を超えるときは取得異常を疑って何も書かずに止める(`--allow-mass-removal` で続行)。
+  - 記録と違う backend で入っている(AUR から公式リポジトリへの移動など)→ `from` を実際の値に直す。
+- 安全策: packages.kdl に旧形式の名残(`installed_on` ノード、`first_installed_on` 等)がある、条件式の
+  構文エラー、未知のプロパティ(`skipif=` などの綴り間違い)や未知の `from` 値、マシンが未定義など、
+  データが不整合なら **何も書かずに失敗**する(読み込み時の検査なので status / deploy も同様に止まる)。書き込みは一時ファイル
+  + rename の原子的置換で、読み込み後にファイルが他から変更されていたら上書きしない。書き出す内容は
+  自分で読み直してパッケージ集合が変わっていないことを確認してから置き換える。
 
-### 木の圧縮(整形)
+### deploy(KDL → 実システム)
 
-fetch が個々の package ノードに `include=#true` を書き続けると木が肥大化するため、「子が全て同じ
-`include` 値になった部分木は、根だけ残して子を消す」という圧縮操作が要る。
+対象マシンの名前集合で全パッケージの条件を評価し、入るべきなのに未導入のものを導入する(削除はしない)。
 
-ただし無条件の自動圧縮は危険: 圧縮すると「たまたま今ある子が全部同じ値だった」という状態が
-「配下は将来追加されるものも含めて全部同じ扱いにする」という意図に格上げされてしまう
-(例: `dev/gui` 配下が vscode 1 個だけで `include=#true` のとき、圧縮して `dev/gui include=#true` に
-すると、後で追加される未知のパッケージも自動的に include 対象になる)。
+- pacman: `sudo pacman -S --needed …`
+- foreign(AUR): `--aur-helper <name>`(既定 `paru`。yay 互換の `-S --needed` を受け付けるもの)
+  - 指定した AUR ヘルパーが PATH に無いときは、エラーを表示して foreign の導入だけを飛ばし、終了コード 1 を返す(他の backend は続ける。`--dry-run` では表示のみで終了コード 0)
+- flatpak: `flatpak install …`
+- 既定では `--noconfirm` を付けない(pacman/AUR ヘルパーの確認や PKGBUILD レビューをそのまま出す)。
+  `pkgnote deploy --noconfirm` のときだけ pacman/AUR ヘルパーに `--noconfirm`、flatpak に `-y`。
+- `--dry-run` で実行するコマンドを表示するだけ。`--backend` で対象を限定できる。
 
-対応: 圧縮は完全自動化せず、圧縮候補を検出してユーザーに提示し、1 箇所ずつ、または一括で確認の上
-適用するコマンドとして設計する。
+### status / categorize / machine
 
-## CLI コマンド一覧(暫定)
+- `status`: 算出した集合と実機を突き合わせ、MISSING(入るべきなのに未導入)/ EXTRA(導入済みだが
+  条件上は入らない。理由付き)/ from 不一致(記録と違う backend で導入済み)を表示する。書き込みなし。
+  `--machine` で他マシンの集合も見られる(比較対象の実機状態はこのシステムのもの)。
+- `categorize`: `uncategorized` のパッケージを対話的に正式カテゴリへ移す。package 自身の条件と
+  `first-installed-on` はそのまま持っていく。移動先カテゴリの条件で結果が変わるマシンがあれば表示する。
+- `machine name|classes`: 論理名 / クラスの表示。
 
-`pkgnote` 単一コマンドにサブコマンドをぶら下げる形。
+### CLI 一覧
 
-- `pkgnote deploy` — 対象マシンの include=#true を算出し実際にインストール
-- `pkgnote fetch` — 通常は hook から自動呼び出し。手動実行用にも用意
-- `pkgnote compress [--all]` — 木の圧縮候補を検出、デフォルトは1件ずつ確認、`--all` で一括
-- `pkgnote status` — ドリフト検知の diff を表示するだけ(書き込みなし)
-- `pkgnote categorize` — `uncategorized` に溜まったパッケージを対話的に正式カテゴリへ移す
+```
+pkgnote status
+pkgnote deploy [--dry-run] [--noconfirm] [--aur-helper NAME] [--backend B]
+pkgnote fetch  [--dry-run] [--allow-mass-removal]
+pkgnote categorize [--dry-run]
+pkgnote machine name|classes
+共通: --machine <論理名>  --color auto|always|never
+```
+
+## 書き戻し
+
+ckdl の `dump()` は「ノード名・キーは裸、文字列値だけクオート」のスタイルを出せずコメントも失うため、
+`src/pkgnote/kdl.py` の自前シリアライザで正準出力する(git 差分が安定する)。プロパティ順は
+`from`, `alias`, `install-if`, `skip-if`, `first-installed-on`, その他。
+
+既知の制限(TODO): ファイル先頭の生成ヘッダ以外のコメントは round-trip されない。退避済みの手書き
+コメントは `~/.pacman/packages-comments.md` にある。
 
 ## git 運用
 
-- packages.kdl / machine_*.kdl は独立した設定ファイルで他ファイルと相互依存しないため、dotfiles 本体と
-  同じブランチで問題ない(別ブランチ化は bare repo の worktree モデル上、$HOME 全体が巻き込まれるため
-  そもそも単純には実現できない)。
-- fetch hook は commit をこれらのファイルにスコープして自動実行してよい(記録の取りこぼし防止)。
-- hook の実行順序と失敗時の挙動:
-  - 既存の `pkglist.hook`/`pkglist_foreign.hook` はそのまま残し、新 hook は独立したファイルとして
-    追加する(統合しない)。pacman はトリガー条件が一致する hook をファイル名のソート順で実行するため、
-    新 hook のファイル名を旧 hook より辞書順で後になるよう命名すれば「旧→新」の順序を保証できる。
-  - 失敗時の挙動: 調査の結果 **`PostTransaction` フックは非ゼロ終了してもトランザクション自体には
-    一切影響しない**(トランザクションはフック実行前に完了済みのため。中断できるのは `PreTransaction`
-    フックの `AbortOnFail` オプションのみ)。既存 hook・新 hook とも `PostTransaction` なので、fetch
-    側のスクリプトが失敗しても `pacman -S` 自体は成功する。念のため `|| true` 等でエラーを握りつぶす
-    防御はしておいて損はないが必須ではない。
-- fetch/deploy 先の複数マシン間の同期・コンフリクト解消(git push・merge)は自動化せず手動。
+- packages.kdl は全マシンで共有する 1 ファイル。fetch は自マシン名を含む条件を追記するだけなので、
+  複数マシンで同時に書き換えても衝突は行単位で小さく、手で解消できる。
+- fetch/deploy 先の複数マシン間の同期・コンフリクト解消(push・merge)は自動化せず手動。
+
+## hook
+
+- **現在は無効。** 以前は `pacman.conf` の `HookDir` に `~/.pacman/` を登録していたが、ユーザーが
+  書き換えられる hook / スクリプトを root が実行することになり危険なので、登録を外した。
+- TODO(未実施): hook を root 所有の `/etc/pacman.d/hooks/` に置き、ヘルパー(`pkgnote-fetch.sh`。
+  `runuser` で呼び出しユーザーに降りて `pkgnote fetch` を実行する)も root 所有のパスへ移す。
+  それまでは pacman 操作後に手動で `pkgnote fetch` を実行する。
+- fetch は自分でインストール済み一覧を問い合わせるので、他の hook との実行順序には依存しない。
+- `PostTransaction` フックは非ゼロ終了してもトランザクションに影響しない(念のため `|| true` もしてある)。
+
+## 旧方式からの変更(2026-10)
+
+当初は `machine_$HOSTNAME.kdl` にカテゴリツリーを写した include ツリーを持ち、最深の明示 `include` が勝つ
+方式だった。これを廃止した理由:
+
+- カテゴリツリーが「説明」と「導入先の判定」を兼ねていて、分類を変えると導入先まで変わる。
+- fetch が package ごとに `include=#true` を書き続けて木が肥大化し、それを畳む圧縮(`compress`)は
+  「たまたま全部同じ」を「将来も全部同じ」に格上げしてしまう危険があった。
+- `uncategorized` だけ `installed_on` で判定する特殊ルールが必要だった。
+
+条件式方式では、マシンの共通点(desktop / nvidia-gpu / gaming 等)で書けるので新マシン追加時に
+packages.kdl を書き換えずに済み、カテゴリは純粋に説明になる。`compress`・`installed_on`・
+`--host`・`host-alias.kdl` 案は廃止。移行は `python -m pkgnote.migrate_v2` で一度だけ実施済み
+(旧 `machine_ruan.kdl` は参照されないが削除はしていない)。
+
+## 旧 pkglist.hook / txt
+
+以前は `pkglist.hook` / `pkglist_foreign.hook` が生成する `pkglist_$HOSTNAME.txt` /
+`pkglist_foreign_$HOSTNAME.txt` を fetch/status の入力にしていたが、ファイルが無い・空のときに
+「全部アンインストールされた」と誤認する危険があったため、直接の問い合わせに切り替えて廃止・削除した。
 
 ## 将来の拡張候補
 
-- **winget/scoop 対応**: Windows 環境でも同じ仕組みを使いたい。`from` の値に `"winget"`/`"scoop"` を
-  追加するだけで packages.kdl 側は対応できるはず。ただし pacman hook 相当の自動検知の仕組みが
-  Windows 側に無いため、fetch の実現方法(ラッパー関数、タスクスケジューラでのポーリング等)は別途調査
-  が必要。優先度は低く、今は構造だけ塞がないようにしておく程度で良い。
+- **winget/scoop 対応**: `from` の値に `"winget"`/`"scoop"` を追加するだけで packages.kdl 側は対応できるはず。
+  ただし pacman hook 相当の自動検知の仕組みが Windows 側に無いため、fetch の実現方法は別途調査が必要。
+  優先度は低い。
 
-## 既存 pkglist.hook / txt の扱い
+## 未解決・保留
 
-方針決定: **当面は両方(hook と生成される txt)残す。**
-
-既存の `~/.pacman/pkglist.hook` / `pkglist_foreign.hook` とその生成物
-`pkglist_ruan.txt` / `pkglist_foreign_ruan.txt` は、`pacman -Qqen`/`-Qqem` の生出力をそのまま持っている。
-これは上記の「明示的インストールのみを拾う判定」と「ドリフト検知」の両方を実装コストゼロで肩代わりする
-入力そのものになった。「hook は残すが txt だけ消す」は意味がない(hook の `Exec` は txt を生成すること
-自体が仕事なので)。
-
-新システム(packages.kdl/machine_*.kdl + `pkgnote`)が実装されて安定稼働したら、この txt を
-恒久的な入力として使い続けるか、退役させるか改めて判断する。
-
-## 未解決・保留(実装時に詰める)
-
-- 明示的インストール/依存関係の切り分け方式(diff ベース)は方針決定済みだが、実際のコード化は未着手。
-- ドリフト検知(`pkgnote status`)の具体的な出力フォーマットは未設計。
-- flatpak 用の shell wrapper はまだ存在しない(実装対象)。
-- 圧縮後のカテゴリに新規パッケージが fetch された場合の挙動(継承に任せるか、個別ノードを足すか)は
-  一考の余地ありとして保留のまま。
-- ホスト名エイリアス機構(`host-alias.kdl` 案)の詳細は未設計。
-- KDL ライブラリの正確な依存バージョン指定は実装開始時に確認すること。
+- コメントの round-trip 保持(上記「書き戻し」)。
+- カテゴリ条件で除外されたパッケージを手で入れた場合の扱いは「警告のみ」。頻発するようなら再検討。

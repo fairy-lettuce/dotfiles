@@ -3,6 +3,8 @@
 .zshrc.local
 .config/fish/local.fish
 .config/fish/fish_variables
+# dotfiles: per-machine settings (e.g. wallpaper-random.local)
+.config/dotfiles/*.local
 
 # files containing credentials etc.
 .config/gh/hosts.yml

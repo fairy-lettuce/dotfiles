@@ -1,0 +1,3 @@
+#!/bin/bash
+# yadm bootstrap: run the dotfiles deploy script.
+exec "$HOME/.local/bin/deploy-dotfiles.sh" "$@"

@@ -1,7 +1,7 @@
 [project]
 name = "pkgnote"
 version = "0.1.0"
-description = "パッケージの導入理由・カテゴリ・マシンごとの要否を KDL で管理する個人用ツール"
+description = "パッケージの導入理由・カテゴリ・マシンごとの導入条件を KDL で管理する個人用ツール"
 readme = "README.md"
 authors = [
     { name = "Chisa Tanaka", email = "chisa.ltc@gmail.com" }
@@ -17,3 +17,8 @@ pkgnote = "pkgnote:main"
 [build-system]
 requires = ["uv_build>=0.11.29,<0.12.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]

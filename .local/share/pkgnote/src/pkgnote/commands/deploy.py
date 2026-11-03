@@ -1,12 +1,13 @@
-"""``pkgnote deploy`` — KDL の意図を実システムへ反映(導入)。
+"""``pkgnote deploy`` — 条件から算出した集合のうち未導入のものを導入する。
 
-packages.kdl と machine_$HOST.kdl を DFS し、include=#true と評価される
-パッケージ一覧を backend 別に算出、未導入のものを一括インストールする。
-AUR ヘルパーは yay。uncategorized は installed_on の特殊ルールで判定
-(いずれも :func:`pkgnote.resolve.desired_set` が処理済み)。
-
-安全策: 既定では導入予定を提示して y/N 確認を取る。削除は行わない
-(EXTRA は status/ fetch 側の管轄)。
+- 現在のマシン(``--machine`` は現在のマシン名と一致する場合のみ可)の名前集合で全パッケージの
+  条件を評価し、入るべき集合を backend 別に出して、実機に無いものを導入する。
+- pacman は ``sudo pacman -S --needed``、AUR(``from="foreign"``)は ``--aur-helper``
+  (既定 paru。yay 互換の ``-S --needed`` を受け付けるもの)、flatpak は ``flatpak install``。
+- 既定では ``--noconfirm`` を付けない(pacman/AUR ヘルパーの確認・PKGBUILD レビューを
+  そのまま出す)。``--noconfirm`` 指定時のみ pacman/AUR ヘルパーに ``--noconfirm``、
+  flatpak に ``-y`` を渡す。
+- ``--dry-run`` は実行するコマンドを表示するだけ。削除は行わない。
 """
 
 from __future__ import annotations
@@ -16,62 +17,72 @@ from ..resolve import desired_set
 from . import Context
 
 
-def run(
-    host: str | None = None,
-    dry_run: bool = False,
+def plan(
+    ctx: Context,
+    installed: dict[str, set[str]],
     backends_filter: list[str] | None = None,
-) -> int:
-    ctx = Context.load(host)
-    desired = desired_set(ctx.packages, ctx.machine)
-    installed = backends.installed_by_backend(ctx.host)
-
+) -> dict[str, list[str]]:
+    """backend → 導入すべき未導入パッケージ名(ソート済み)。"""
+    desired = desired_set(ctx.packages, ctx.names)
     targets = ("pacman", "foreign", "flatpak")
     if backends_filter:
         targets = tuple(b for b in targets if b in backends_filter)
-
-    to_install: dict[str, list[str]] = {}
+    out: dict[str, list[str]] = {}
     for backend in targets:
-        want = desired.by_backend.get(backend, set())
-        have = installed.get(backend, set())
-        missing = sorted(want - have)
+        missing = sorted(desired.get(backend, set()) - installed.get(backend, set()))
         if missing:
-            to_install[backend] = missing
+            out[backend] = missing
+    return out
 
-    if desired.undecided:
-        print(term.yellow("[warn]") + f" include 未指定のパッケージ {len(desired.undecided)} 件はスキップします "
-              "(machine_*.kdl に include を明示してください)")
+
+def run(
+    machine: str | None = None,
+    dry_run: bool = False,
+    backends_filter: list[str] | None = None,
+    aur_helper: str = backends.DEFAULT_AUR_HELPER,
+    noconfirm: bool = False,
+) -> int:
+    ctx = Context.load(machine, require_current=True)
+    to_install = plan(ctx, backends.installed_by_backend(), backends_filter)
 
     if not to_install:
         print("導入対象なし。すべて同期済みです。")
         return 0
 
-    print(f"deploy 対象 (machine: {ctx.host}):")
+    print(f"deploy 対象 (machine: {ctx.machine}):")
     for backend, names in to_install.items():
         colored = ", ".join(term.cyan(n) for n in names)
         print(f"  [{backend}] {len(names)} 件: {colored}")
 
+    cmds = [
+        (backend, backends.install_command(backend, names, aur_helper, noconfirm))
+        for backend, names in to_install.items()
+    ]
+
+    helper_missing = "foreign" in to_install and not backends.command_available(aur_helper)
+    missing_msg = (
+        term.red("[error]")
+        + f" AUR ヘルパー `{aur_helper}` が見つかりません。AUR のパッケージの導入を飛ばします"
+        + "(`--aur-helper` で別のヘルパーを指定できます)"
+    )
+
     if dry_run:
-        print("\n--dry-run: 実行コマンドのみ表示")
-        for backend, names in to_install.items():
-            backends.run_install(backend, names, dry_run=True)
+        print("\n--dry-run: 実行するコマンド")
+        for _backend, cmd in cmds:
+            print(term.dim("  $ " + " ".join(cmd)))
+        if helper_missing:
+            print(missing_msg)
         return 0
 
-    if not _confirm("上記を導入しますか?"):
-        print("中止しました。")
-        return 1
-
     rc = 0
-    for backend, names in to_install.items():
-        r = backends.run_install(backend, names, dry_run=False)
+    for backend, cmd in cmds:
+        if backend == "foreign" and helper_missing:
+            print(missing_msg)
+            rc = 1
+            continue
+        print(term.dim("  $ " + " ".join(cmd)))
+        r = backends.run_command(cmd)
         if r != 0:
             print(term.red("[error]") + f" {backend} の導入が失敗しました (exit {r})")
             rc = r
     return rc
-
-
-def _confirm(prompt: str) -> bool:
-    try:
-        ans = input(f"{prompt} [y/N] ").strip().lower()
-    except EOFError:
-        return False
-    return ans in ("y", "yes")
