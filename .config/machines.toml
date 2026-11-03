@@ -1,0 +1,21 @@
+# List of machines using this dotfiles
+
+[ruan]
+form = "desktop"
+cpu = "intel"
+gpu = "nvidia"
+bootloader = "grub"
+filesystem = "ext4"
+encryption = false
+secureboot = false
+roles = ["personal", "gaming", "dualboot"]
+
+[tribios]
+form = "laptop"
+cpu = "intel"
+gpu = "intel"
+bootloader = "systemd-boot"
+filesystem = "btrfs"
+encryption = true
+secureboot = true
+roles = ["work", "touch"]
