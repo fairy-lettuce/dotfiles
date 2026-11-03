@@ -3,6 +3,8 @@
 .zshrc.local
 .config/fish/local.fish
 .config/fish/fish_variables
+# git: work identity (config.local) and leak patterns (leakcheck.local)
+.config/git/*.local
 # dotfiles: per-machine settings (e.g. wallpaper-random.local)
 .config/dotfiles/*.local
 

@@ -1,0 +1,427 @@
+#!/bin/bash
+# git-leakcheck — keep work identities/names out of personal (public) repos.
+#
+# Registered as a global config-based hook (see ~/.config/git/config):
+#   git-leakcheck pre-commit
+#   git-leakcheck pre-push <remote-name> <remote-url>   (refs on stdin)
+#
+# Patterns are read from ${XDG_CONFIG_HOME:-$HOME/.config}/git/leakcheck.local,
+# which is NOT tracked in dotfiles. If the file is missing, every check passes.
+# Any malformed line (unknown kind, missing value, bad dir) makes every check
+# fail until it is fixed.
+# Format: one "<kind> <value>" per line; blank lines and lines starting with
+# '#' are ignored. All matching is case-insensitive.
+#   dir <path>       work directory (absolute or "~/..."); repos whose git dir
+#                    is inside it are work repos (same idea as includeIf
+#                    "gitdir:"); symlinks are resolved
+#   email <addr>     work email address (exact match on ident emails,
+#                    substring match everywhere else)
+#   remote <pat>     work remote URL. The URL is normalized first: scheme and
+#                    "user@" are dropped, an scp-like "host:path" becomes
+#                    "host/path", so git@github.com:acme/x, ssh://git@github.com/acme/x
+#                    and https://github.com/acme/x all become github.com/acme/x.
+#                    Glob if the pattern contains * ? or [, else a substring
+#                    (e.g. "github.com/acme-inc/"). Patterns get the same
+#                    normalization.
+#   word <string>    string that must not appear in personal repos (company
+#                    name, internal domain, ...); fixed-string substring match
+#                    on names, emails, messages, file names and added lines
+#
+# pre-commit: blocks a work email (or an ident containing a word) outside work
+#             dirs, and a non-work email inside work dirs (i.e. a missing or
+#             misconfigured includeIf).
+# pre-push:   unless the remote URL matches a "remote" pattern, scans every
+#             commit / tag / blob that the destination does not have yet
+#             (determined with `git ls-remote`, not remote-tracking refs):
+#             idents, messages, file names, added lines. Binary files that
+#             cannot be scanned (except common media formats) also block.
+# Bypass a single run with `git commit --no-verify` / `git push --no-verify`.
+set -euo pipefail
+
+PATTERN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/git/leakcheck.local"
+[ -f "$PATTERN_FILE" ] || exit 0
+
+die() {
+    echo "git-leakcheck: $*" >&2
+    exit 1
+}
+
+# Normalize a remote URL (or pattern) to "host/path" form, lowercased.
+normalize_url() {
+    local u="${1,,}"
+    if [[ "$u" == *://* ]]; then
+        u="${u#*://}"
+        # Drop userinfo and port of the authority part.
+        local auth="${u%%/*}" rest=""
+        [[ "$u" == */* ]] && rest="/${u#*/}"
+        auth="${auth##*@}"
+        auth="${auth%:[0-9]*}"
+        u="$auth$rest"
+    elif [[ "$u" =~ ^[^/]*: ]]; then
+        # scp-like: [user@]host:path
+        local host="${u%%:*}"
+        u="${host##*@}/${u#*:}"
+    fi
+    printf '%s\n' "$u"
+}
+
+DIRS=()
+EMAILS=()
+REMOTES=()
+WORDS=()
+
+# Parse the pattern file. Values are stored lowercased (except dirs).
+lineno=0
+while IFS= read -r line || [ -n "$line" ]; do
+    lineno=$((lineno + 1))
+    [ "$lineno" = 1 ] && line="${line#$'\xef\xbb\xbf'}"   # UTF-8 BOM
+    # Trim leading/trailing whitespace (this also drops a CR of CRLF).
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [ -z "$line" ] && continue
+    [ "${line:0:1}" = "#" ] && continue
+    kind="${line%%[[:space:]]*}"
+    value="${line#"$kind"}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    [ -n "$value" ] || die "$PATTERN_FILE:$lineno: missing value: $line"
+    case "$kind" in
+    dir)
+        # shellcheck disable=SC2088  # literal "~" is intended here
+        if [ "$value" = "~" ] || [[ "$value" == "~/"* ]]; then
+            value="$HOME${value:1}"
+        elif [ "${value:0:1}" != / ]; then
+            die "$PATTERN_FILE:$lineno: dir must be absolute or start with ~/: $value"
+        fi
+        DIRS+=("$(realpath -m -- "$value")")
+        ;;
+    email)  EMAILS+=("${value,,}") ;;
+    remote) REMOTES+=("$(normalize_url "$value")") ;;
+    word)   WORDS+=("${value,,}") ;;
+    *) die "$PATTERN_FILE:$lineno: unknown kind '$kind' (expected dir/email/remote/word)" ;;
+    esac
+done < "$PATTERN_FILE"
+
+# Extract the email from an ident line "Name <email> 1234567890 +0900".
+ident_email() {
+    local s="${1#*<}"
+    echo "${s%%>*}"
+}
+
+is_work_email() {
+    local e="${1,,}" w
+    for w in "${EMAILS[@]}"; do
+        [ "$e" = "$w" ] && return 0
+    done
+    return 1
+}
+
+# Print the first word contained in the given string, if any.
+find_word() {
+    local s="${1,,}" w
+    for w in "${WORDS[@]}"; do
+        if [[ "$s" == *"$w"* ]]; then
+            printf '%s\n' "$w"
+            return 0
+        fi
+    done
+    return 1
+}
+
+is_in_work_dir() {
+    local path="$1" d
+    for d in "${DIRS[@]}"; do
+        [ "$path" = "$d" ] && return 0
+        [[ "$path" == "$d"/* ]] && return 0
+    done
+    return 1
+}
+
+pre_commit() {
+    local gitdir ident email name who w hint=""
+    # Like includeIf "gitdir:", decide by the location of the git dir (for a
+    # linked worktree: <main repo>/.git/worktrees/<name>).
+    gitdir="$(git rev-parse --absolute-git-dir)"
+    gitdir="$(realpath -- "$gitdir")"
+    if [ -f "$HOME/.gitconfig" ]; then
+        hint="
+Note: ~/.gitconfig exists and is read after ~/.config/git/config, so its
+user.email overrides the includeIf in config.local. Move it away."
+    fi
+
+    for who in author committer; do
+        if [ "$who" = author ]; then
+            ident="$(git var GIT_AUTHOR_IDENT 2>/dev/null)" || exit 0
+        else
+            ident="$(git var GIT_COMMITTER_IDENT 2>/dev/null)" || exit 0
+        fi
+        email="$(ident_email "$ident")"
+        name="${ident%% <*}"
+        if is_in_work_dir "$gitdir"; then
+            # Only meaningful when work emails are configured at all.
+            if [ "${#EMAILS[@]}" -gt 0 ] && ! is_work_email "$email"; then
+                die "$who email <$email> is not a work email, but this repo is in a work directory ($gitdir).
+Check the includeIf in ~/.config/git/config.local.$hint"
+            fi
+        elif is_work_email "$email"; then
+            die "$who email <$email> is a work email, but this repo is outside the work directories ($gitdir)."
+        elif w="$(find_word "$name <$email>")"; then
+            die "$who ident '$name <$email>' contains '$w', but this repo is outside the work directories ($gitdir)."
+        fi
+    done
+}
+
+remote_is_work() {
+    local url p
+    url="$(normalize_url "$1")"
+    for p in "${REMOTES[@]}"; do
+        if [[ "$p" == *[*?[]* ]]; then
+            # shellcheck disable=SC2053  # intentional glob match
+            [[ "$url" == $p ]] && return 0
+        else
+            [[ "$url" == *"$p"* ]] && return 0
+        fi
+    done
+    return 1
+}
+
+# Scan a stream of sections and print one "<id>\t<where>\t<pattern>" line per
+# (id, where, pattern) hit. Section markers are lines starting with \001:
+#   \001H <id>      start of an object (commit hash / tag name / blob)
+#   \001I           ident lines follow: "<role>\t<name>\t<email>"
+#   \001M           message follows; every line is scanned
+#   \001C           blob path + content follows; every line is scanned
+#   \001D           `git log --raw -p --cc` output follows; only new paths and
+#                   lines present in the new version are scanned
+scan_stream() {
+    # Patterns go through the environment: awk -v would interpret backslashes.
+    local IFS=$'\n'
+    LEAKCHECK_EMAILS="${EMAILS[*]}" LEAKCHECK_WORDS="${WORDS[*]}" awk '
+        BEGIN {
+            ne = split(ENVIRON["LEAKCHECK_EMAILS"], E, "\n")
+            nw = split(ENVIRON["LEAKCHECK_WORDS"], W, "\n")
+            for (i = 1; i <= ne; i++) { P[++np] = E[i]; isemail[E[i]] = 1 }
+            for (i = 1; i <= nw; i++) P[++np] = W[i]
+        }
+        function hit(where, pat) {
+            key = id SUBSEP where SUBSEP pat
+            if (!(key in seen)) { seen[key] = 1; print id "\t" where "\t" pat }
+        }
+        function scan(s, where,    l, i) {
+            l = tolower(s)
+            for (i = 1; i <= np; i++) if (index(l, P[i])) hit(where, P[i])
+        }
+        /^\001H / { id = substr($0, 4); sect = ""; inhunk = 0; next }
+        /^\001I$/ { sect = "ident"; next }
+        /^\001M$/ { sect = "message"; next }
+        /^\001C$/ { sect = "content"; next }
+        /^\001D$/ { sect = "diff"; inhunk = 0; next }
+        sect == "ident" {
+            split($0, f, "\t")
+            if (tolower(f[3]) in isemail) hit(f[1] " email", f[3])
+            scan(f[2], f[1] " name")
+            scan(f[3], f[1] " email")
+            next
+        }
+        sect == "message" || sect == "content" { scan($0, sect); next }
+        sect == "diff" {
+            if (/^:/) {
+                # Raw line ":<modes> <oids> <status>\t<path>[\t<new path>]".
+                # Scan the resulting path unless the file was deleted.
+                n = split($0, f, "\t")
+                st = f[1]; sub(/.* /, "", st)
+                if (st !~ /^D+$/) scan(f[n], "file name")
+                inhunk = 0
+                next
+            }
+            if (/^@@/) {
+                # "@@" for a normal diff, "@@@" (n+1 "@") for an n-parent --cc.
+                match($0, /^@+/); ncol = RLENGTH - 1; inhunk = 1
+                next
+            }
+            if (!inhunk) next                 # headers (diff/---/+++/index...)
+            if ($0 !~ /^[-+ \\]/) { inhunk = 0; next }
+            pre = substr($0, 1, ncol)
+            # Keep only lines that exist in the new version and were added
+            # relative to at least one parent.
+            if (pre ~ /-/ || pre !~ /\+/) next
+            scan(substr($0, ncol + 1), "added line")
+        }
+    '
+}
+
+# Run git with every option that affects `log` output pinned, so user config
+# (or environment) cannot hide content from the scan.
+git_log_pinned() {
+    git -c core.quotePath=false -c log.showSignature=false -c log.showRoot=true \
+        -c diff.noprefix=false -c diff.mnemonicPrefix=false -c diff.relative=false \
+        -c diff.external= -c diff.submodule=short -c color.ui=false \
+        -c i18n.logOutputEncoding=UTF-8 -c core.bigFileThreshold=2047m \
+        log --no-walk=unsorted --stdin --root --no-color --no-ext-diff \
+        --no-textconv --no-relative --no-notes --encoding=UTF-8 \
+        --src-prefix=a/ --dst-prefix=b/ "$@"
+}
+
+# Emit scan_stream sections for a list of commits read from stdin.
+dump_commits() {
+    git_log_pinned --text --raw --find-renames -p --cc \
+        --format=$'\001H %h%n\001I%nauthor\t%an\t%ae%ncommitter\t%cn\t%ce%n\001M%n%B%n\001D'
+}
+
+# File extensions of binary formats that are allowed without a manual check.
+# Their raw bytes are still scanned (--text), which catches plain ASCII
+# metadata, but they are not blocked just for being binary: blocking every
+# image/font commit would make the hook too noisy to keep enabled.
+MEDIA_EXT_RE='\.(png|jpe?g|gif|webp|avif|bmp|ico|icns|tiff?|heic|mp3|mp4|m4a|ogg|opus|wav|flac|webm|mkv|mov|woff2?|ttf|otf)$'
+
+# Read commit ids on stdin; print "<short>\tbinary file\t<path>" for each
+# added/modified file that really contains NUL bytes (git's own heuristic,
+# minus .gitattributes overrides) and is not a common media format.
+find_binaries() {
+    local line commit="" path blob nul
+    while IFS= read -r line; do
+        if [ "${line:0:1}" = $'\001' ]; then
+            commit="${line:1}"
+            continue
+        fi
+        [[ "$line" == $'-\t-\t'* ]] || continue
+        path="${line#$'-\t-\t'}"
+        [[ "${path,,}" =~ $MEDIA_EXT_RE ]] && continue
+        blob="$(git rev-parse -q --verify "$commit:$path" 2>/dev/null)" || blob=""
+        if [ -n "$blob" ]; then
+            nul="$(git cat-file blob "$blob" 2>/dev/null | head -c 8000 | tr -dc '\000' | wc -c)" || true
+            # No NUL: a text file marked binary via attributes; --text scans it.
+            [ "${nul:-0}" -gt 0 ] || continue
+        fi
+        printf '%s\tbinary file\t%s\n' "$(git rev-parse --short "$commit")" "$path"
+    done < <(git_log_pinned --numstat --no-renames --diff-filter=d --format=$'\001%H')
+}
+
+# Emit scan_stream sections for one annotated tag object.
+dump_tag() {
+    local oid="$1" name="$2" line tagger="" in_msg=0
+    printf '\001H tag %s\n' "$name"
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ "$in_msg" = 1 ]; then
+            printf '%s\n' "$line"
+        elif [ -z "$line" ]; then
+            in_msg=1
+            printf '\001I\n'
+            if [ -n "$tagger" ]; then
+                printf 'tagger\t%s\t%s\n' "${tagger%% <*}" "$(ident_email "$tagger")"
+            fi
+            printf '\001M\n'
+        elif [[ "$line" == "tagger "* ]]; then
+            tagger="${line#tagger }"
+        fi
+    done < <(git cat-file tag "$oid")
+}
+
+# Emit scan_stream sections for a blob <oid> named <path> (path and content
+# are scanned as a whole; NUL bytes are kept, like --text).
+dump_blob() {
+    printf '\001H blob %s\n\001C\n%s\n' "$2" "$2"
+    git cat-file blob "$1"
+    printf '\n'
+}
+
+is_zero_oid() {
+    [[ "$1" =~ ^0+$ ]]
+}
+
+pre_push() {
+    local remote_name="${1:-}" remote_url="${2:-}"
+    [ "${#EMAILS[@]}" -eq 0 ] && [ "${#WORDS[@]}" -eq 0 ] && exit 0
+    if remote_is_work "$remote_url"; then
+        exit 0
+    fi
+
+    # Read all of stdin first: commands below (ssh via ls-remote) may read it.
+    local -a updates=()
+    local _local_ref local_oid remote_ref _remote_oid
+    while read -r _local_ref local_oid remote_ref _remote_oid; do
+        [ -z "${local_oid:-}" ] && continue
+        is_zero_oid "$local_oid" && continue   # deletion
+        updates+=("$local_oid $remote_ref")
+    done
+    [ "${#updates[@]}" -eq 0 ] && exit 0
+
+    # What the destination already has: its advertised tips that exist here.
+    # Remote-tracking refs are not trusted (set-url, pushurl, push by URL).
+    # If ls-remote fails, nothing is excluded and the whole reachable history
+    # is scanned: slower and maybe noisy, but never misses anything.
+    local -a have=()
+    local remote_tips
+    if remote_tips="$(git ls-remote -- "$remote_url" </dev/null 2>/dev/null)"; then
+        mapfile -t have < <(printf '%s\n' "$remote_tips" | awk 'NF { print $1 }' |
+            git cat-file --batch-check='%(objectname) %(objecttype)' 2>/dev/null |
+            awk '$2 == "commit" || $2 == "tag" { print "^" $1 }' | sort -u)
+    else
+        echo "git-leakcheck: warning: 'git ls-remote $remote_url' failed; scanning all history being pushed." >&2
+    fi
+
+    local -a starts=() tags=() blobs=()
+    local u oid name type target
+    for u in "${updates[@]}"; do
+        oid="${u%% *}"
+        name="${u#* }"
+        name="${name#refs/tags/}"
+        # Peel (possibly nested) annotated tags, scanning each tag object.
+        type="$(git cat-file -t "$oid")"
+        while [ "$type" = tag ]; do
+            tags+=("$oid $name")
+            target="$(git cat-file tag "$oid" | sed -n '1s/^object //p')"
+            oid="$target"
+            type="$(git cat-file -t "$oid")"
+        done
+        case "$type" in
+        commit) starts+=("$oid") ;;
+        blob)   blobs+=("$oid $oid") ;;
+        tree)
+            while read -r _ _ target name; do
+                blobs+=("$target $name")
+            done < <(git -c core.quotePath=false ls-tree -r "$oid")
+            ;;
+        esac
+    done
+
+    local -a commits=()
+    if [ "${#starts[@]}" -gt 0 ]; then
+        mapfile -t commits < <(printf '%s\n' "${starts[@]}" "${have[@]}" | git rev-list --stdin)
+    fi
+
+    local hits
+    hits="$(
+        {
+            if [ "${#commits[@]}" -gt 0 ]; then
+                printf '%s\n' "${commits[@]}" | dump_commits
+            fi
+            local t
+            for t in "${tags[@]}"; do
+                dump_tag "${t%% *}" "${t#* }"
+            done
+            for t in "${blobs[@]}"; do
+                dump_blob "${t%% *}" "${t#* }"
+            done
+        } | scan_stream
+        if [ "${#commits[@]}" -gt 0 ]; then
+            printf '%s\n' "${commits[@]}" | find_binaries
+        fi
+    )"
+
+    if [ -n "$hits" ]; then
+        {
+            echo "git-leakcheck: refusing to push to non-work remote '$remote_name' ($remote_url)."
+            echo "The following objects contain work-related identities or words,"
+            echo "or binary files that cannot be scanned (check them manually):"
+            printf '%s\n' "$hits" | awk -F'\t' '{ printf "  %-14s %-18s %s\n", $1, $2, $3 }'
+            echo "Fix the commits (e.g. rebase/amend), or bypass with: git push --no-verify"
+        } >&2
+        exit 1
+    fi
+}
+
+case "${1:-}" in
+pre-commit) pre_commit ;;
+pre-push)   shift; pre_push "$@" ;;
+*) die "usage: git-leakcheck pre-commit | pre-push <remote> <url>" ;;
+esac
