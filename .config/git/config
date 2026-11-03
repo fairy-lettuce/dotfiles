@@ -1,0 +1,18 @@
+# Tracked in dotfiles (public). Identity (user.name/email) and work settings live in
+# the untracked config.local, included at the end so it takes precedence.
+[init]
+	defaultBranch = main
+[credential "https://github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[hook "leakcheck-commit"]
+	command = \"$HOME/.local/bin/git-leakcheck\" pre-commit
+	event = pre-commit
+[hook "leakcheck-push"]
+	command = \"$HOME/.local/bin/git-leakcheck\" pre-push
+	event = pre-push
+[include]
+	path = config.local
