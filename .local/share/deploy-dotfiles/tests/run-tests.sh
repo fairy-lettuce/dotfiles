@@ -199,7 +199,7 @@ test_root_refusal() {
 test_help() {
     run_deploy "" --help
     assert_eq "$RC" 0
-    assert_contains "$T/out" 'sudo pacman -S git yadm'
+    assert_contains "$T/out" 'sudo pacman -S git yadm diffutils'
     assert_contains "$T/out" 'yadm --yadm-repo ~/.dotfiles clone https://github.com/fairy-lettuce/dotfiles.git'
 }
 

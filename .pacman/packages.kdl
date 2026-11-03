@@ -144,7 +144,7 @@ tool {
         }
 
         wallpaper {
-            package "awww-bin" from="foreign" first-installed-on="ruan"
+            package "awww" from="pacman" first-installed-on="ruan"
             package "swaybg" from="pacman" install-if="ruan" first-installed-on="ruan"
         }
 
@@ -307,7 +307,7 @@ dev {
 
     coding-agent {
         package "claude-code" from="foreign" first-installed-on="ruan"
-        package "claude-desktop-bin" from="foreign" first-installed-on="ruan"
+        package "claude-desktop" from="foreign" first-installed-on="ruan"
         package "gemini-cli" from="pacman" install-if="ruan" first-installed-on="ruan"
         package "antigravity-cli" from="foreign" first-installed-on="ruan"
         package "openai-codex-bin" from="foreign" first-installed-on="ruan"

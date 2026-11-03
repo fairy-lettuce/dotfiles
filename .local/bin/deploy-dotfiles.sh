@@ -40,7 +40,7 @@ usage() {
 deploy-dotfiles.sh - set up this machine from the dotfiles repo
 
 Prerequisites (manual, on a fresh install):
-  sudo pacman -S git yadm
+  sudo pacman -S git yadm diffutils
   yadm --yadm-repo ~/.dotfiles clone https://github.com/fairy-lettuce/dotfiles.git
 
 Steps: python/uv -> machine identity (machine-init.py, yadm alt)
