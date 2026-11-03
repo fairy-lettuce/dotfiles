@@ -1,0 +1,30 @@
+# pkgnote fetch hook
+#
+# 配置: etcfiles で /etc/pacman.d/hooks/ にコピーする (root の持ち物になる)。
+# 以前は pacman.conf の HookDir に ~/.pacman/ を登録していたが、ユーザーが書き換えられる
+# 場所のフックやスクリプトを root が実行することになるので、やめた。
+#
+# 実行ユーザー: pacman は root でフックを実行する。root が直接実行するのは /bin/sh と
+# /usr/bin/runuser (どちらも root の持ち物) だけで、pkgnote (ユーザーのファイル) は
+# runuser で呼び出しユーザー ($SUDO_USER) のログイン環境に降りてから実行する。
+# sudo を経由しない root での実行では $SUDO_USER がないので、何もしない。
+#
+# 入力: pkgnote fetch は `pacman -Qqen` / `-Qqem` / `flatpak list` を自分で問い合わせる。
+#
+# 失敗時の挙動: PostTransaction フックは失敗してもトランザクションに影響しない
+# (トランザクションはフックの実行前に完了済み)。念のため `|| true` で握りつぶす。
+# pkgnote fetch 側も、問い合わせの失敗やデータの不整合のときは何も書かずに終了する。
+#
+# 既知の問題: AUR ヘルパーがビルド依存を `pacman -S` で入れてから `pacman -D --asdeps`
+# にするまでの間にこのフックが走ると、ビルド依存が明示的なパッケージとして記録される。
+
+[Trigger]
+Operation = Install
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = pkgnote: syncing package notes (KDL) after installs/removes...
+When = PostTransaction
+Exec = /bin/sh -c '[ -n "$SUDO_USER" ] && /usr/bin/runuser -l "$SUDO_USER" -c "pkgnote fetch" || true'
