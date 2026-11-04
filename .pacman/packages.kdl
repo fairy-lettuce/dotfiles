@@ -198,6 +198,10 @@ tool {
         theme {
             package "adw-gtk-theme" from="pacman" first-installed-on="ruan"
         }
+
+        vault {
+            package "proton-pass" from="foreign" install-if="ruan" first-installed-on="ruan"
+        }
     }
 }
 
