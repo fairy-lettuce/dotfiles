@@ -20,4 +20,4 @@ bootloader = "systemd-boot"
 filesystem = "btrfs"
 encryption = "luks"
 secureboot = "secureboot"
-roles = ["work", "touch"]
+roles = ["work", "touch", "fingerprint"]
