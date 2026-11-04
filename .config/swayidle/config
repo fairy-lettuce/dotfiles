@@ -1,0 +1,15 @@
+# swayidle -w and swaylock -f wait for the lock before allowing sleep.
+before-sleep 'swaylock -f'
+lock 'swaylock -f'
+after-resume 'niri msg action power-on-monitors'
+
+# Dim 15 seconds before blanking (20 seconds before locking).
+# brightnessctl saves/restores the original value; do not brighten a dim panel.
+timeout 580 'brightnessctl -q -s -d intel_backlight && current=$(brightnessctl -d intel_backlight get) && maximum=$(brightnessctl -d intel_backlight max) && if [ "$current" -gt "$((maximum / 10))" ]; then brightnessctl -q -d intel_backlight set 10%; fi' resume 'brightnessctl -q -r -d intel_backlight'
+
+# Activity during the five-second grace period turns the displays back on.
+timeout 595 'niri msg action power-off-monitors' resume 'niri msg action power-on-monitors'
+timeout 600 'swaylock -f'
+
+# Suspend after 15 minutes of inactivity (5 minutes after locking).
+timeout 900 'systemctl suspend-then-hibernate'

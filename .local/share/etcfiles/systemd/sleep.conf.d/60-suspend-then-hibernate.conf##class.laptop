@@ -1,0 +1,4 @@
+[Sleep]
+AllowSuspendThenHibernate=yes
+HibernateDelaySec=1h
+HibernateOnACPower=yes

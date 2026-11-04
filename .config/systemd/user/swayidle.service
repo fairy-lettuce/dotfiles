@@ -1,0 +1,12 @@
+[Unit]
+Description=Screen lock and sleep event handler
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/swayidle -w -C %h/.config/swayidle/config
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target
