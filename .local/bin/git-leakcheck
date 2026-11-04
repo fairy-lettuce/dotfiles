@@ -10,7 +10,10 @@
 # Any malformed line (unknown kind, missing value, bad dir) makes every check
 # fail until it is fixed.
 # Format: one "<kind> <value>" per line; blank lines and lines starting with
-# '#' are ignored. All matching is case-insensitive.
+# '#' are ignored. All matching is case-insensitive for ASCII letters only and
+# byte-exact otherwise: the whole script runs with LC_ALL=C, so diffs that are
+# not valid UTF-8 are scanned byte by byte (no locale warnings), and UTF-8
+# patterns (e.g. Japanese names) match their exact bytes.
 #   dir <path>       work directory (absolute or "~/..."); repos whose git dir
 #                    is inside it are work repos (same idea as includeIf
 #                    "gitdir:"); symlinks are resolved
@@ -24,8 +27,18 @@
 #                    (e.g. "github.com/acme-inc/"). Patterns get the same
 #                    normalization.
 #   word <string>    string that must not appear in personal repos (company
-#                    name, internal domain, ...); fixed-string substring match
-#                    on names, emails, messages, file names and added lines
+#                    name, internal domain, ...); fixed-string, whole-word match
+#                    on ident names/emails, commit/tag messages, file names,
+#                    added lines, pushed blobs and pushed ref names. Like
+#                    regex \b, but only ASCII letters are word characters
+#                    (digits, "_" and non-ASCII bytes are not): if the
+#                    pattern starts with a word character, the byte before a
+#                    match must not be one; likewise for its last character and
+#                    the byte after (start/end of text count as boundaries).
+#                    So "acme" matches "acme", "acme-api", "(acme)",
+#                    "ACME_TOKEN" and "acme2024" but not "acmeinc" or "acmeApi";
+#                    "@acme.example" matches "dev@acme.example", and a Japanese
+#                    name matches next to any text.
 #
 # pre-commit: blocks a work email (or an ident containing a word) outside work
 #             dirs, and a non-work email inside work dirs (i.e. a missing or
@@ -33,10 +46,20 @@
 # pre-push:   unless the remote URL matches a "remote" pattern, scans every
 #             commit / tag / blob that the destination does not have yet
 #             (determined with `git ls-remote`, not remote-tracking refs):
-#             idents, messages, file names, added lines. Binary files that
+#             idents, messages, file names, added lines; also the names of
+#             the refs being pushed (except deletions). Binary files that
 #             cannot be scanned (except common media formats) also block.
+# Report: one line per finding: commit (or tag/blob), kind, path:line (for
+# added lines, file names, blob content and binary files; "ref <name>" for
+# ref names), the pattern, and a short snippet around the match. Binary files
+# are listed first; long reports are cut after REPORT_MAX lines.
 # Bypass a single run with `git commit --no-verify` / `git push --no-verify`.
 set -euo pipefail
+
+# Byte semantics everywhere (see "All matching" above). gawk in a UTF-8 locale
+# warned "Invalid multibyte data detected" on diffs with non-UTF-8 bytes.
+export LC_ALL=C
+REPORT_MAX=40
 
 PATTERN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/git/leakcheck.local"
 [ -f "$PATTERN_FILE" ] || exit 0
@@ -115,11 +138,33 @@ is_work_email() {
     return 1
 }
 
-# Print the first word contained in the given string, if any.
+# True if <word> occurs in <string> (both already lowercased) as a whole word:
+# a byte around the occurrence is not [a-z] if the word's edge on that side
+# is [a-z] (see "word" above; same logic as find() in scan_stream).
+has_word() {
+    local s="$1" w="$2" off=0 rest head pos before after lb=0 rb=0
+    [[ "${w:0:1}" == [a-z] ]] && lb=1
+    [[ "${w: -1}" == [a-z] ]] && rb=1
+    while :; do
+        rest="${s:off}"
+        [[ "$rest" == *"$w"* ]] || return 1
+        head="${rest%%"$w"*}"
+        pos=$((off + ${#head}))
+        before="" after=""
+        [ "$lb" = 1 ] && [ "$pos" -gt 0 ] && before="${s:pos-1:1}"
+        [ "$rb" = 1 ] && after="${s:pos+${#w}:1}"
+        if [[ ! "$before$after" =~ [a-z] ]]; then
+            return 0
+        fi
+        off=$((pos + 1))   # look for the next occurrence
+    done
+}
+
+# Print the first word contained (as a whole word) in the given string, if any.
 find_word() {
     local s="${1,,}" w
     for w in "${WORDS[@]}"; do
-        if [[ "$s" == *"$w"* ]]; then
+        if has_word "$s" "$w"; then
             printf '%s\n' "$w"
             return 0
         fi
@@ -184,14 +229,17 @@ remote_is_work() {
     return 1
 }
 
-# Scan a stream of sections and print one "<id>\t<where>\t<pattern>" line per
-# (id, where, pattern) hit. Section markers are lines starting with \001:
-#   \001H <id>      start of an object (commit hash / tag name / blob)
+# Scan a stream of sections and print one finding per line:
+#   "<id>\t<kind>\t<location>\t<pattern>\t<snippet>"
+# (location is "path:line", "path", "line N" or "-"). Section markers are lines
+# starting with \001:
+#   \001H <id>      start of an object (commit hash / "tag <name>" / "blob <path>")
 #   \001I           ident lines follow: "<role>\t<name>\t<email>"
 #   \001M           message follows; every line is scanned
-#   \001C           blob path + content follows; every line is scanned
+#   \001C           blob path, then its content; every line is scanned
 #   \001D           `git log --raw -p --cc` output follows; only new paths and
 #                   lines present in the new version are scanned
+# Runs under LC_ALL=C: tolower() folds ASCII only, everything else is bytes.
 scan_stream() {
     # Patterns go through the environment: awk -v would interpret backslashes.
     local IFS=$'\n'
@@ -199,52 +247,102 @@ scan_stream() {
         BEGIN {
             ne = split(ENVIRON["LEAKCHECK_EMAILS"], E, "\n")
             nw = split(ENVIRON["LEAKCHECK_WORDS"], W, "\n")
-            for (i = 1; i <= ne; i++) { P[++np] = E[i]; isemail[E[i]] = 1 }
-            for (i = 1; i <= nw; i++) P[++np] = W[i]
+            for (i = 1; i <= ne; i++) { P[++np] = E[i]; isemail[E[i]] = 1; isword[np] = 0 }
+            for (i = 1; i <= nw; i++) {
+                P[++np] = W[i]; isword[np] = 1
+                # Boundary checks only on a side whose edge is [a-z].
+                lb[np] = W[i] ~ /^[a-z]/; rb[np] = W[i] ~ /[a-z]$/
+            }
         }
-        function hit(where, pat) {
-            key = id SUBSEP where SUBSEP pat
-            if (!(key in seen)) { seen[key] = 1; print id "\t" where "\t" pat }
+        # Position of the first acceptable match of pattern i in l (lowercased), or 0.
+        function find(l, i,    p, off, pos, b, a) {
+            p = P[i]
+            if (!isword[i]) return index(l, p)
+            off = 0
+            while ((pos = index(substr(l, off + 1), p)) > 0) {
+                pos += off
+                b = lb[i] && pos > 1 ? substr(l, pos - 1, 1) : ""
+                a = rb[i] ? substr(l, pos + length(p), 1) : ""
+                if ((b a) !~ /[a-z]/) return pos
+                off = pos
+            }
+            return 0
         }
-        function scan(s, where,    l, i) {
+        # Up to ~60 bytes around the match, not cutting UTF-8 sequences.
+        function snippet(s, pos, len,    from, to, c, out) {
+            from = pos - 20; if (from < 1) from = 1
+            to = pos + len + 20; if (to > length(s)) to = length(s)
+            while (from > 1 && (c = substr(s, from, 1)) >= "\200" && c <= "\277") from--
+            while (to < length(s) && (c = substr(s, to + 1, 1)) >= "\200" && c <= "\277") to++
+            out = substr(s, from, to - from + 1)
+            gsub(/[\t\r\001-\037]/, " ", out)
+            return (from > 1 ? "..." : "") out (to < length(s) ? "..." : "")
+        }
+        function hit(kind, loc, pat, snip,    key) {
+            key = id SUBSEP kind SUBSEP loc SUBSEP pat
+            if (key in seen) return
+            seen[key] = 1
+            print id "\t" kind "\t" loc "\t" pat "\t" snip
+        }
+        function scan(s, kind, loc,    l, i, pos) {
             l = tolower(s)
-            for (i = 1; i <= np; i++) if (index(l, P[i])) hit(where, P[i])
+            for (i = 1; i <= np; i++)
+                if ((pos = find(l, i)) > 0) hit(kind, loc, P[i], snippet(s, pos, length(P[i])))
         }
-        /^\001H / { id = substr($0, 4); sect = ""; inhunk = 0; next }
+        /^\001H / { id = substr($0, 4); sect = ""; inhunk = 0; path = ""; next }
         /^\001I$/ { sect = "ident"; next }
-        /^\001M$/ { sect = "message"; next }
-        /^\001C$/ { sect = "content"; next }
+        /^\001M$/ { sect = "message"; ln = 0; next }
+        /^\001C$/ { sect = "content"; ln = -1; next }
         /^\001D$/ { sect = "diff"; inhunk = 0; next }
         sect == "ident" {
             split($0, f, "\t")
-            if (tolower(f[3]) in isemail) hit(f[1] " email", f[3])
-            scan(f[2], f[1] " name")
-            scan(f[3], f[1] " email")
+            if (tolower(f[3]) in isemail) hit(f[1] " email", "-", f[3], f[3])
+            scan(f[2], f[1] " name", "-")
+            scan(f[3], f[1] " email", "-")
             next
         }
-        sect == "message" || sect == "content" { scan($0, sect); next }
+        sect == "message" { ln++; scan($0, "message", "line " ln); next }
+        sect == "content" {
+            # First line: the blob path; then its content.
+            if (++ln == 0) { bpath = $0; scan($0, "file name", bpath) }
+            else scan($0, "content", bpath ":" ln)
+            next
+        }
         sect == "diff" {
             if (/^:/) {
                 # Raw line ":<modes> <oids> <status>\t<path>[\t<new path>]".
                 # Scan the resulting path unless the file was deleted.
                 n = split($0, f, "\t")
                 st = f[1]; sub(/.* /, "", st)
-                if (st !~ /^D+$/) scan(f[n], "file name")
+                if (st !~ /^D+$/) scan(f[n], "file name", f[n])
                 inhunk = 0
+                next
+            }
+            if (!inhunk && /^\+\+\+ /) {
+                path = substr($0, 5)
+                sub(/\t$/, "", path)         # git appends a TAB to paths with spaces
+                if (path == "/dev/null") path = ""
+                else sub(/^b\//, "", path)
                 next
             }
             if (/^@@/) {
                 # "@@" for a normal diff, "@@@" (n+1 "@") for an n-parent --cc.
+                # The last "+<start>[,<count>]" is the range in the new file.
                 match($0, /^@+/); ncol = RLENGTH - 1; inhunk = 1
+                hdr = $0; sub(/ @+.*$/, "", hdr); sub(/^@+ /, "", hdr)
+                nf = split(hdr, r, " ")
+                newln = r[nf]; sub(/^\+/, "", newln); sub(/,.*/, "", newln); newln += 0
                 next
             }
             if (!inhunk) next                 # headers (diff/---/+++/index...)
             if ($0 !~ /^[-+ \\]/) { inhunk = 0; next }
+            if (/^\\/) next                   # "\ No newline at end of file"
             pre = substr($0, 1, ncol)
-            # Keep only lines that exist in the new version and were added
-            # relative to at least one parent.
-            if (pre ~ /-/ || pre !~ /\+/) next
-            scan(substr($0, ncol + 1), "added line")
+            if (pre ~ /-/) next               # not in the new version
+            # In the new version: scan it if it was added relative to at
+            # least one parent.
+            if (pre ~ /\+/) scan(substr($0, ncol + 1), "added line", (path != "" ? path : "?") ":" newln)
+            newln++
         }
     '
 }
@@ -273,9 +371,10 @@ dump_commits() {
 # image/font commit would make the hook too noisy to keep enabled.
 MEDIA_EXT_RE='\.(png|jpe?g|gif|webp|avif|bmp|ico|icns|tiff?|heic|mp3|mp4|m4a|ogg|opus|wav|flac|webm|mkv|mov|woff2?|ttf|otf)$'
 
-# Read commit ids on stdin; print "<short>\tbinary file\t<path>" for each
-# added/modified file that really contains NUL bytes (git's own heuristic,
-# minus .gitattributes overrides) and is not a common media format.
+# Read commit ids on stdin; print "<short>\tbinary file\t<path>\t-\t-" (the
+# scan_stream format) for each added/modified file that really contains NUL
+# bytes (git's own heuristic, minus .gitattributes overrides) and is not a
+# common media format.
 find_binaries() {
     local line commit="" path blob nul
     while IFS= read -r line; do
@@ -292,8 +391,9 @@ find_binaries() {
             # No NUL: a text file marked binary via attributes; --text scans it.
             [ "${nul:-0}" -gt 0 ] || continue
         fi
-        printf '%s\tbinary file\t%s\n' "$(git rev-parse --short "$commit")" "$path"
+        printf '%s\tbinary file\t%s\t-\t-\n' "$(git rev-parse --short "$commit")" "$path"
     done < <(git_log_pinned --numstat --no-renames --diff-filter=d --format=$'\001%H')
+    wait $!   # status of the git log above
 }
 
 # Emit scan_stream sections for one annotated tag object.
@@ -314,14 +414,29 @@ dump_tag() {
             tagger="${line#tagger }"
         fi
     done < <(git cat-file tag "$oid")
+    wait $!
 }
 
 # Emit scan_stream sections for a blob <oid> named <path> (path and content
 # are scanned as a whole; NUL bytes are kept, like --text).
 dump_blob() {
     printf '\001H blob %s\n\001C\n%s\n' "$2" "$2"
-    git cat-file blob "$1"
+    git cat-file blob "$1" || return 1
     printf '\n'
+}
+
+# Format scan_stream / find_binaries lines for the terminal, one per finding,
+# at most REPORT_MAX lines.
+format_hits() {
+    awk -F'\t' -v max="$REPORT_MAX" '
+        { n++ }
+        n <= max {
+            line = sprintf("  %-10s %-16s %s", $1, $2, $3)
+            if ($4 != "-") line = line sprintf("  [%s]", $4)
+            if ($5 != "-" && $5 != "") line = line sprintf("  \"%s\"", $5)
+            print line
+        }
+        END { if (n > max) printf "  ... %d more\n", n - max }'
 }
 
 is_zero_oid() {
@@ -337,11 +452,16 @@ pre_push() {
 
     # Read all of stdin first: commands below (ssh via ls-remote) may read it.
     local -a updates=()
-    local _local_ref local_oid remote_ref _remote_oid
+    local -a refhits=()
+    local _local_ref local_oid remote_ref _remote_oid w
     while read -r _local_ref local_oid remote_ref _remote_oid; do
         [ -z "${local_oid:-}" ] && continue
         is_zero_oid "$local_oid" && continue   # deletion
         updates+=("$local_oid $remote_ref")
+        # The destination ref name is published too (scan_stream format).
+        if w="$(find_word "$remote_ref")"; then
+            refhits+=("${local_oid:0:7}"$'\tref name\tref '"$remote_ref"$'\t'"$w"$'\t-')
+        fi
     done
     [ "${#updates[@]}" -eq 0 ] && exit 0
 
@@ -360,7 +480,7 @@ pre_push() {
     fi
 
     local -a starts=() tags=() blobs=()
-    local u oid name type target
+    local u oid name type target otype
     for u in "${updates[@]}"; do
         oid="${u%% *}"
         name="${u#* }"
@@ -377,9 +497,11 @@ pre_push() {
         commit) starts+=("$oid") ;;
         blob)   blobs+=("$oid $oid") ;;
         tree)
-            while read -r _ _ target name; do
-                blobs+=("$target $name")
+            # Only blobs: gitlinks (submodules) point to commits we may not have.
+            while read -r _ otype target name; do
+                [ "$otype" = blob ] && blobs+=("$target $name")
             done < <(git -c core.quotePath=false ls-tree -r "$oid")
+            wait $! || die "'git ls-tree $oid' failed; refusing to push."
             ;;
         esac
     done
@@ -387,33 +509,41 @@ pre_push() {
     local -a commits=()
     if [ "${#starts[@]}" -gt 0 ]; then
         mapfile -t commits < <(printf '%s\n' "${starts[@]}" "${have[@]}" | git rev-list --stdin)
+        wait $! || die "'git rev-list' failed; refusing to push."
     fi
 
+    # errexit does not apply inside $(...): check every step, and block the
+    # push if any of them fails (fail closed). Binary files come first so the
+    # REPORT_MAX cap cannot hide them.
     local hits
     hits="$(
+        if [ "${#refhits[@]}" -gt 0 ]; then
+            printf '%s\n' "${refhits[@]}"
+        fi
+        if [ "${#commits[@]}" -gt 0 ]; then
+            printf '%s\n' "${commits[@]}" | find_binaries || exit 1
+        fi
         {
             if [ "${#commits[@]}" -gt 0 ]; then
-                printf '%s\n' "${commits[@]}" | dump_commits
+                printf '%s\n' "${commits[@]}" | dump_commits || exit 1
             fi
             local t
             for t in "${tags[@]}"; do
-                dump_tag "${t%% *}" "${t#* }"
+                dump_tag "${t%% *}" "${t#* }" || exit 1
             done
             for t in "${blobs[@]}"; do
-                dump_blob "${t%% *}" "${t#* }"
+                dump_blob "${t%% *}" "${t#* }" || exit 1
             done
         } | scan_stream
-        if [ "${#commits[@]}" -gt 0 ]; then
-            printf '%s\n' "${commits[@]}" | find_binaries
-        fi
-    )"
+    )" || die "scanning the objects to push failed (see errors above); refusing to push.
+Bypass with: git push --no-verify"
 
     if [ -n "$hits" ]; then
         {
             echo "git-leakcheck: refusing to push to non-work remote '$remote_name' ($remote_url)."
-            echo "The following objects contain work-related identities or words,"
+            echo "The following objects or ref names contain work-related identities or words,"
             echo "or binary files that cannot be scanned (check them manually):"
-            printf '%s\n' "$hits" | awk -F'\t' '{ printf "  %-14s %-18s %s\n", $1, $2, $3 }'
+            printf '%s\n' "$hits" | format_hits
             echo "Fix the commits (e.g. rebase/amend), or bypass with: git push --no-verify"
         } >&2
         exit 1
