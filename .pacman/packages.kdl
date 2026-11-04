@@ -367,6 +367,7 @@ system {
         package "linux-firmware" from="pacman" first-installed-on="ruan"
         package "linux-headers" from="pacman" first-installed-on="ruan"
         package "intel-ucode" from="pacman" install-if="intel-cpu" first-installed-on="ruan"
+        package "sof-firmware" from="pacman" install-if="laptop" first-installed-on="tribios"
     }
 
     base {
@@ -378,6 +379,8 @@ system {
         package "grub" from="pacman" install-if="grub" first-installed-on="ruan"
         package "efibootmgr" from="pacman" first-installed-on="ruan"
         package "os-prober" from="pacman" install-if="grub & dualboot" first-installed-on="ruan"
+        package "efitools" from="pacman" install-if="secureboot" first-installed-on="tribios"
+        package "sbctl" from="pacman" install-if="secureboot" first-installed-on="tribios"
     }
 
     network {
@@ -497,6 +500,7 @@ system {
         package "ntfs-3g" from="pacman" first-installed-on="ruan"
         package "snapper" from="pacman" install-if="btrfs"
         package "snap-pac" from="pacman" install-if="btrfs"
+        package "btrfs-progs" from="pacman" install-if="btrfs" first-installed-on="tribios"
     }
 
     polkit {
@@ -506,6 +510,7 @@ system {
     hardware {
         package "usbutils" from="pacman" first-installed-on="ruan"
         package "nvme-cli" from="pacman" first-installed-on="ruan"
+        package "fprintd" from="pacman" install-if="fingerprint" first-installed-on="tribios"
     }
 
     wayland {
