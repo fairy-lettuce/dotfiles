@@ -38,7 +38,7 @@ window#waybar {
 
 /* Widgets */
 #workspaces button, #idle_inhibitor, #systemd-failed-units, #pulseaudio, #gamemode,
-#network, #cpu, #memory, #backlight, #tray, #clock, #custom-power {
+#network, #cpu, #memory, #backlight, #battery, #tray, #clock, #custom-power {
 	background-image: url("paper-pattern.webp");
 	background-repeat: repeat;
 	background-position: 152px 290px;
@@ -120,4 +120,15 @@ label {
 
 .cffi-niri-windows .tile.urgent {
     background-color: @red;
+}
+
+/* Battery warnings apply while discharging. */
+#battery.warning.discharging {
+    background-color: @yellow;
+    color: @foreground;
+}
+
+#battery.critical.discharging {
+    background-color: @red;
+    color: @foreground;
 }

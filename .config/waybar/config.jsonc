@@ -55,6 +55,7 @@
             "cpu",
             "memory",
             "backlight",
+            "battery",
         ]
     },
     "group/right-tray":{
@@ -142,6 +143,25 @@
     },
     "memory": {
         "format": "{}% "
+    },
+    "backlight": {
+        "format": "{percent}% {icon}",
+        "format-icons": ["", "", "", "", "", "", "", "", ""],
+        "on-scroll-up": "brightnessctl set 1%-",
+        "on-scroll-down": "brightnessctl set +1%"
+    },
+    "battery": {
+        "interval": 30,
+        "states": {
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{capacity}% {icon}",
+        "format-charging": "{capacity}% ",
+        "format-plugged": "{capacity}% ",
+        "format-full": "{capacity}% ",
+        "format-icons": ["", "", "", "", ""],
+        "format-time": "{H}h {M}min"
     },
     "tray": {
         // "icon-size": 21,
