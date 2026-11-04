@@ -200,7 +200,7 @@ tool {
         }
 
         vault {
-            package "proton-pass" from="foreign" install-if="ruan" first-installed-on="ruan"
+            package "proton-pass" from="foreign" first-installed-on="ruan"
         }
     }
 }
